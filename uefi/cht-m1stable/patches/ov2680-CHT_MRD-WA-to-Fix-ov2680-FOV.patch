@@ -1,7 +1,7 @@
-From 57133b4b467b5bb8e811855bfee2ae7dfa58370f Mon Sep 17 00:00:00 2001
+From e7720ef2920e8230fa763e55442fbb29af69ea55 Mon Sep 17 00:00:00 2001
 From: Fidel Gutierrez Resendiz <fidel.gutierrez.resendiz@intel.com>
 Date: Mon, 18 Apr 2016 11:26:53 -0500
-Subject: [PATCH] ov2680: CHT_MRD:WA to Fix ov2680 FOV
+Subject: [PATCH 2/4] ov2680: CHT_MRD:WA to Fix ov2680 FOV
 
 Currently, there is a problem in the front camera of MRD, where an issue
 is detected in the FOV. FOV becomes smaller while switching video

@@ -1,7 +1,7 @@
-From ab02e6e72efa5457657cebe9b0115f59dd4b0e25 Mon Sep 17 00:00:00 2001
+From 4da78d533d7fa5c76aac3a93ec00e1da10eaf169 Mon Sep 17 00:00:00 2001
 From: Per Persson <per.persson@intel.com>
 Date: Wed, 13 Apr 2016 16:43:09 +0200
-Subject: [PATCH] Camera: ov8858: Apply OTP
+Subject: [PATCH 4/4] Camera: ov8858: Apply OTP
 
 Write wb and lenc otp data to sensor.
 
@@ -15,19 +15,19 @@ Reviewed-on: https://android.intel.com:443/494247
  2 files changed, 242 insertions(+), 31 deletions(-)
 
 diff --git a/drivers/external_drivers/camera/drivers/media/i2c/ov8858.c b/drivers/external_drivers/camera/drivers/media/i2c/ov8858.c
-index 18e40b5..fec108d 100644
+index 7b2941d..e50c5ff 100644
 --- a/drivers/external_drivers/camera/drivers/media/i2c/ov8858.c
 +++ b/drivers/external_drivers/camera/drivers/media/i2c/ov8858.c
-@@ -369,6 +369,8 @@ static int __ov8858_set_exposure(struct v4l2_subdev *sd, int exposure, int gain,
- 	dev_dbg(&client->dev, "%s, exposure = %d, gain=%d, dig_gain=%d\n",
- 		__func__, exposure, gain, dig_gain);
+@@ -374,6 +374,8 @@ static int __ov8858_set_exposure(struct v4l2_subdev *sd, int exposure, int gain,
+ 	if (strcmp(dmi_get_system_info(DMI_BOARD_NAME), CHT_HR_DEV_NAME) != 0)
+ 		msleep(5);
  
 +	/* dig_gain is not applied to sensor. OTP WB data is used instead */
 +
  	if (dev->limit_exposure_flag) {
  		if (exposure > *vts - OV8858_INTEGRATION_TIME_MARGIN)
  			exposure = *vts - OV8858_INTEGRATION_TIME_MARGIN;
-@@ -398,24 +400,6 @@ static int __ov8858_set_exposure(struct v4l2_subdev *sd, int exposure, int gain,
+@@ -403,24 +405,6 @@ static int __ov8858_set_exposure(struct v4l2_subdev *sd, int exposure, int gain,
  	if (ret)
  		return ret;
  
@@ -52,7 +52,7 @@ index 18e40b5..fec108d 100644
  	ret = ov8858_write_reg(client, OV8858_16BIT, OV8858_LONG_GAIN,
  				gain & 0x07ff);
  	if (ret)
-@@ -495,10 +479,23 @@ static int ov8858_priv_int_data_init(struct v4l2_subdev *sd)
+@@ -500,10 +484,23 @@ static int ov8858_priv_int_data_init(struct v4l2_subdev *sd)
  	u32 size = OV8858_OTP_END_ADDR - OV8858_OTP_START_ADDR + 1;
  	int r;
  	u16 isp_ctrl2 = 0;
@@ -79,7 +79,7 @@ index 18e40b5..fec108d 100644
  			dev_err(&client->dev, "%s: can't allocate memory",
  				__func__);
  			r = -ENOMEM;
-@@ -553,10 +550,113 @@ static int ov8858_priv_int_data_init(struct v4l2_subdev *sd)
+@@ -558,10 +555,113 @@ static int ov8858_priv_int_data_init(struct v4l2_subdev *sd)
  
  		/* Read the OTP data from the buffer */
  		r = ov8858_i2c_read(client, size, OV8858_OTP_START_ADDR,
@@ -194,7 +194,7 @@ index 18e40b5..fec108d 100644
  		/* Turn on Dead Pixel Correction */
  		r = ov8858_write_reg(client, OV8858_8BIT, OV8858_OTP_ISP_CTRL2,
  				     isp_ctrl2 | OV8858_OTP_DPC_ENABLE);
-@@ -572,7 +672,6 @@ static int ov8858_priv_int_data_init(struct v4l2_subdev *sd)
+@@ -577,7 +677,6 @@ static int ov8858_priv_int_data_init(struct v4l2_subdev *sd)
  		}
  	}
  
@@ -202,7 +202,7 @@ index 18e40b5..fec108d 100644
  	return 0;
  
  error1:
-@@ -581,8 +680,8 @@ error1:
+@@ -586,8 +685,8 @@ error1:
  			     isp_ctrl2 | OV8858_OTP_DPC_ENABLE);
  	ov8858_write_reg(client, 1, OV8858_STREAM_MODE, 0x00);
  error2:
@@ -213,7 +213,7 @@ index 18e40b5..fec108d 100644
  error3:
  	dev_err(&client->dev, "%s: OTP reading failed\n", __func__);
  	return r;
-@@ -598,13 +697,13 @@ static int ov8858_g_priv_int_data(struct v4l2_subdev *sd,
+@@ -603,13 +702,13 @@ static int ov8858_g_priv_int_data(struct v4l2_subdev *sd,
  
  	mutex_lock(&dev->input_lock);
  
@@ -229,7 +229,7 @@ index 18e40b5..fec108d 100644
  			 min_t(__u32, priv->size, size))) {
  		r = -EFAULT;
  		dev_err(&client->dev, "%s: OTP reading failed\n", __func__);
-@@ -618,6 +717,85 @@ static int ov8858_g_priv_int_data(struct v4l2_subdev *sd,
+@@ -623,6 +722,85 @@ static int ov8858_g_priv_int_data(struct v4l2_subdev *sd,
  	return 0;
  }
  
@@ -315,7 +315,7 @@ index 18e40b5..fec108d 100644
  static int __ov8858_init(struct v4l2_subdev *sd)
  {
  	struct i2c_client *client = v4l2_get_subdevdata(sd);
-@@ -655,7 +833,15 @@ static int __ov8858_init(struct v4l2_subdev *sd)
+@@ -660,7 +838,15 @@ static int __ov8858_init(struct v4l2_subdev *sd)
  	if (ret)
  		return ret;
  

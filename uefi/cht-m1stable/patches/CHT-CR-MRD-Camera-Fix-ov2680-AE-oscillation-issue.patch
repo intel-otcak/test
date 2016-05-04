@@ -1,7 +1,7 @@
-From b392f7d6ec7751e9aea40f0adf3fa022294d6979 Mon Sep 17 00:00:00 2001
+From 71f584f047a1832d34d8b2098c77e92b149c8757 Mon Sep 17 00:00:00 2001
 From: Gerard Andre <gerard.andre@intel.com>
 Date: Wed, 20 Apr 2016 10:55:16 +0200
-Subject: [PATCH] [CHT-CR-MRD][Camera] Fix ov2680 AE oscillation issue.
+Subject: [PATCH 3/4] [CHT-CR-MRD][Camera] Fix ov2680 AE oscillation issue.
 
 The group holder isn't needed in CHT.
 
