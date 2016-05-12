@@ -1,3 +1,5 @@
+# KERNEL_VERSION=3.14.55
+
 # BEGIN_VPG
 #roll back any stable updates to 3.14.y for GFX
 0001-VPG-roll-back-VPG-patches-from-3.14.55-to-3.14.patch
@@ -5192,5 +5194,14 @@ input-touch-Firmware-Memory-should-be-free-after-hav.patch
 ASoC-rt5645-Increase-micbias-output-voltage.patch
 sched-dont-ouput-cpu-sched-info-by-default.patch
 input-silead-touch-reset-before-suspending.patch
-0001-Camera-ov8858-Improve-DFC.patch
-0002-Revert-drm-i915-patches.patch
+iio-magn-ak0911-optimizing-hrtimer-trigger-handler.patch
+Camera-ov8858-Improve-DFC.patch
+SQUASHME-VPG-drm-i915-Fix-IPANIC-of-intel_get_crtc_s.patch
+EM-3gpio_otg-Adding-thermal-cooling-device-in-3gpio-.patch
+EM-extcon-dc-pwrsrc-Register-extcon-notifier-on-all-.patch
+EM-dc_xpwr_charger-Conditionally-register-vbus-contr.patch
+FOR_UPSTREAM-VPG-drm-i915-CHT_CR-Fix-drrs-connector-.patch
+Camera-ov8858-Fix-purple-stripes.patch
+ov8858-improve-W-A-to-sync-exposure-settings.patch
+input-silead-touch-add-touch-pressure-and-size-suppo.patch
+0001-Revert-drm-i915-patches.patch
