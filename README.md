@@ -22,20 +22,20 @@ uefi/cht-m1stable (CherryTrail Marshmallow release)
 
 Within a quilt directory, these are the files that are present:
 
-- TechnicalDebt.csv: A list of the patch files included in the current
+- **TechnicalDebt.csv**: A list of the patch files included in the current
   version of the quilt, with an associated group name for each. The field
   names are in the first line of the file.
 
-- TechnicalDebtSummary.csv: A list of the groups from the
+- **TechnicalDebtSummary.csv**: A list of the groups from the
   TechnicalDebt.csv file, along with the patch count for each. The field
   names are in the first line of the file.
 
-- ChangeReport.txt: A description of the changes from the previous weekly
+- **ChangeReport.txt**: A description of the changes from the previous weekly
   build of the same kernel.
 
-- patches/: A directory the series file and patches that comprise the quilt
+- **patches/**: A directory the series file and patches that comprise the quilt
 
-- patches/series: A list of the patches and the order they should be
+- **patches/series**: A list of the patches and the order they should be
   applied to create the kernel source for the weekly build. Note that the
   base KERNEL_VERSION from kernel.org is specified in a comment in the
   first line of the series file.
@@ -46,6 +46,6 @@ Look at the first line in the patches/series file to get the kernel
 version, and create a source tree (using git clone or by downloading a
 tar-ball). In the top level of the kernel source tree, copy the patches
 directory from the ProductionKernelQuilts github project. Then use
-"quilt push -a" to apply the quilt.
+"`quilt push -a`" to apply the quilt.
 
 Please see "[man quilt](http://linux.die.net/man/1/quilt)" for more information about the quilt command.
