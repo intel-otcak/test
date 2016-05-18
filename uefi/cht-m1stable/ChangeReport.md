@@ -6,21 +6,21 @@ New patches
 Please see the individual patch files for commit text.
 
 Touch:
-[input-touchscreen-silead-deactive-debug-logs-set-man.patch](test/blob/cht-m1stable-2016_ww20/uefi/cht-m1stable/patches/input-touchscreen-silead-deactive-debug-logs-set-man.patch)
-[Input-touch-silead-Solve-touch-reading-to-detect-10-.patch](test/blob/cht-m1stable-2016_ww20/uefi/cht-m1stable/patches/Input-touch-silead-Solve-touch-reading-to-detect-10-.patch)
-[input-touch-silead-Initialize-array-before-use-it.patch](test/blob/cht-m1stable-2016_ww20/uefi/cht-m1stable/patches/input-touch-silead-Initialize-array-before-use-it.patch)
+![input-touchscreen-silead-deactive-debug-logs-set-man.patch](https://github.com/intel-otcak/test/blob/cht-m1stable-2016_ww20/uefi/cht-m1stable/patches/input-touchscreen-silead-deactive-debug-logs-set-man.patch)
+![Input-touch-silead-Solve-touch-reading-to-detect-10-.patch](https://github.com/intel-otcak/test/blob/cht-m1stable-2016_ww20/uefi/cht-m1stable/patches/Input-touch-silead-Solve-touch-reading-to-detect-10-.patch)
+![input-touch-silead-Initialize-array-before-use-it.patch](https://github.com/intel-otcak/test/blob/cht-m1stable-2016_ww20/uefi/cht-m1stable/patches/input-touch-silead-Initialize-array-before-use-it.patch)
 
 USB:
-[usb-xhci-W-A-for-internal-connected-and-self-powered.patch](test/blob/cht-m1stable-2016_ww20/uefi/cht-m1stable/patches/usb-xhci-W-A-for-internal-connected-and-self-powered.patch)
-[Revert-SSIC-Disable-D3-entry-on-every-SSIC-disconnec.patch](test/blob/cht-m1stable-2016_ww20/uefi/cht-m1stable/patches/Revert-SSIC-Disable-D3-entry-on-every-SSIC-disconnec.patch)
-[SSIC-Disable-D3-entry-on-every-SSIC-disconnect-V2.patch](test/blob/cht-m1stable-2016_ww20/uefi/cht-m1stable/patches/SSIC-Disable-D3-entry-on-every-SSIC-disconnect-V2.patch)
-[0001-Revert-SSIC-Disable-D3-entry-on-every-SSIC-disconnec.patch](test/blob/cht-m1stable-2016_ww20/uefi/cht-m1stable/patches/0001-Revert-SSIC-Disable-D3-entry-on-every-SSIC-disconnec.patch)
+![usb-xhci-W-A-for-internal-connected-and-self-powered.patch](https://github.com/intel-otcak/test/blob/cht-m1stable-2016_ww20/uefi/cht-m1stable/patches/usb-xhci-W-A-for-internal-connected-and-self-powered.patch)
+![Revert-SSIC-Disable-D3-entry-on-every-SSIC-disconnec.patch](https://github.com/intel-otcak/test/blob/cht-m1stable-2016_ww20/uefi/cht-m1stable/patches/Revert-SSIC-Disable-D3-entry-on-every-SSIC-disconnec.patch)
+![SSIC-Disable-D3-entry-on-every-SSIC-disconnect-V2.patch](https://github.com/intel-otcak/test/blob/cht-m1stable-2016_ww20/uefi/cht-m1stable/patches/SSIC-Disable-D3-entry-on-every-SSIC-disconnect-V2.patch)
+![0001-Revert-SSIC-Disable-D3-entry-on-every-SSIC-disconnec.patch](https://github.com/intel-otcak/test/blob/cht-m1stable-2016_ww20/uefi/cht-m1stable/patches/0001-Revert-SSIC-Disable-D3-entry-on-every-SSIC-disconnec.patch)
 
 Media:
-[UVC-Make-UVC_URB-a-module-paramater.patch](test/blob/cht-m1stable-2016_ww20/uefi/cht-m1stable/patches/UVC-Make-UVC_URB-a-module-paramater.patch)
+![UVC-Make-UVC_URB-a-module-paramater.patch](https://github.com/intel-otcak/test/blob/cht-m1stable-2016_ww20/uefi/cht-m1stable/patches/UVC-Make-UVC_URB-a-module-paramater.patch)
 
 Camera:
-[Camera-ov8858-Update-BLC.patch](test/blob/cht-m1stable-2016_ww20/uefi/cht-m1stable/patches/Camera-ov8858-Update-BLC.patch)
+![Camera-ov8858-Update-BLC.patch](https://github.com/intel-otcak/test/blob/cht-m1stable-2016_ww20/uefi/cht-m1stable/patches/Camera-ov8858-Update-BLC.patch)
 
 Obsoleted patch
 ---------------

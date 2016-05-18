@@ -1,6 +1,8 @@
-# Quilt Representation of Intel Android Weekly Builds
+# ProductionKernelQuilts
 
-## INTRODUCTION
+Quilt Representation of Intel Android Weekly Builds
+
+## Introduction
 
 Intel makes a weekly release of its android kernel available to
 customers in the form of a git branch. In order to make the changes
@@ -8,7 +10,7 @@ easier to quantify, an equivalent quilt representation of each of these
 kernels is released here. The subject line of the commit can be used to
 correlate the quilt representation to the separately released git source.
 
-## QUILTS
+## Quilts
 
 At the top level of the project, there is a separate directory for each
 of the SOC and android desserts available. In this first release, there
@@ -16,7 +18,7 @@ is just one quilt at:
 
 uefi/cht-m1stable (CherryTrail Marshmallow release)
 
-## FILES
+## Files
 
 Within a quilt directory, these are the files that are present:
 
@@ -38,7 +40,7 @@ Within a quilt directory, these are the files that are present:
   base KERNEL_VERSION from kernel.org is specified in a comment in the
   first line of the series file.
 
-## USAGE
+## Usage
 
 Look at the first line in the patches/series file to get the kernel
 version, and create a source tree (using git clone or by downloading a
