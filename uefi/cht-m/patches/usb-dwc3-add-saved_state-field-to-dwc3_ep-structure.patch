@@ -1,0 +1,44 @@
+From f00fd69e13e1e96d0852e09d6f4323e804040e60 Mon Sep 17 00:00:00 2001
+From: Paul Zimmerman <Paul.Zimmerman@synopsys.com>
+Date: Fri, 27 Apr 2012 13:56:23 +0300
+Subject: [PATCH 32/41] usb: dwc3: add 'saved_state' field to dwc3_ep structure
+
+This extra field will save endpoint state when we're
+about to enter hibernation. It will be used later
+to restore the endpoint state when resuming.
+
+Signed-off-by: Paul Zimmerman <paulz@synopsys.com>
+Signed-off-by: Felipe Balbi <balbi@ti.com>
+(cherry picked from commit 4cfcf876767ab845e1db0c0b2671db27b1a3586c)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I9614aca45915545962d9be85721141e4905bb892
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34814
+Reviewed-on: https://android.intel.com:443/519802
+---
+ drivers/usb/dwc3/core.h | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/usb/dwc3/core.h b/drivers/usb/dwc3/core.h
+index d25036d..992cffa 100644
+--- a/drivers/usb/dwc3/core.h
++++ b/drivers/usb/dwc3/core.h
+@@ -432,6 +432,7 @@ struct dwc3_event_buffer {
+  * @trb_dequeue: dequeue 'pointer' into TRB array
+  * @desc: usb_endpoint_descriptor pointer
+  * @dwc: pointer to DWC controller
++ * @saved_state: ep state saved during hibernation
+  * @flags: endpoint flags (wedged, stalled, ...)
+  * @number: endpoint number (1 - 15)
+  * @type: set to bmAttributes & USB_ENDPOINT_XFERTYPE_MASK
+@@ -457,6 +458,7 @@ struct dwc3_ep {
+ 	const struct usb_ss_ep_comp_descriptor *comp_desc;
+ 	struct dwc3		*dwc;
+ 
++	u32			saved_state;
+ 	unsigned		flags;
+ #define DWC3_EP_ENABLED		(1 << 0)
+ #define DWC3_EP_STALL		(1 << 1)
+-- 
+1.9.1
+

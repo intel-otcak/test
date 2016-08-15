@@ -1,0 +1,61 @@
+From c557576d387d297049c1714ae3abb18b91c92e2d Mon Sep 17 00:00:00 2001
+From: Andrzej Pietrasiewicz <andrzej.p@samsung.com>
+Date: Thu, 8 May 2014 14:06:27 +0200
+Subject: [PATCH 10/14] usb: gadget: f_rndis: OS Descriptors configfs support
+
+Added handling of OS Descriptors support for f_rndis.
+
+Signed-off-by: Andrzej Pietrasiewicz <andrzej.p@samsung.com>
+Signed-off-by: Felipe Balbi <balbi@ti.com>
+
+(cherry picked from commit a747b0958b5ead2d4ba46dc1f77d46e693a06efa)
+
+Change-Id: Ic5b22ed942cdb4c88cc8602c9203825cf2cc3b0e
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-33009
+Signed-off-by: Krzysztof Adamski <krzysztofx.adamski@intel.com>
+Reviewed-on: https://android.intel.com:443/514015
+---
+ drivers/usb/gadget/f_rndis.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/drivers/usb/gadget/f_rndis.c b/drivers/usb/gadget/f_rndis.c
+index 8e6a67a..67ffa73 100644
+--- a/drivers/usb/gadget/f_rndis.c
++++ b/drivers/usb/gadget/f_rndis.c
+@@ -27,6 +27,7 @@
+ #include "u_ether_configfs.h"
+ #include "u_rndis.h"
+ #include "rndis.h"
++#include "configfs.h"
+ 
+ /*
+  * This function is an RNDIS Ethernet port -- a Microsoft protocol that's
+@@ -906,12 +907,15 @@ static void rndis_free_inst(struct usb_function_instance *f)
+ 		else
+ 			free_netdev(opts->net);
+ 	}
++
++	kfree(opts->rndis_os_desc.group.default_groups); /* single VLA chunk */
+ 	kfree(opts);
+ }
+ 
+ static struct usb_function_instance *rndis_alloc_inst(void)
+ {
+ 	struct f_rndis_opts *opts;
++	struct usb_os_desc *descs[1];
+ 
+ 	opts = kzalloc(sizeof(*opts), GFP_KERNEL);
+ 	if (!opts)
+@@ -928,6 +932,9 @@ static struct usb_function_instance *rndis_alloc_inst(void)
+ 	}
+ 	INIT_LIST_HEAD(&opts->rndis_os_desc.ext_prop);
+ 
++	descs[0] = &opts->rndis_os_desc;
++	usb_os_desc_prepare_interf_dir(&opts->func_inst.group, 1, descs,
++				       THIS_MODULE);
+ 	config_group_init_type_name(&opts->func_inst.group, "",
+ 				    &rndis_func_type);
+ 
+-- 
+1.9.1
+

@@ -1,0 +1,78 @@
+From 3b3f04306a37637aa7fe2e93ad2624d99865d046 Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <felipe.balbi@linux.intel.com>
+Date: Wed, 18 May 2016 12:37:21 +0300
+Subject: [PATCH 12/41] usb: dwc3: gadget: fix for possible endpoint disable
+ race
+
+when we call dwc3_gadget_giveback(), we end up
+releasing our controller's lock. Another thread
+could get scheduled and disable the endpoint,
+subsequently setting dep->endpoint.desc to NULL.
+
+In that case, we would end up dereferencing a NULL
+pointer which would result in a Kernel Oops. Let's
+avoid the problem by simply returning early if we
+have a NULL descriptor.
+
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit 4cb4221764ef473cd36e1953f1fea11865786d65)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Conflicts:
+	drivers/usb/dwc3/gadget.c
+
+Change-Id: Ie41f00d338d63ef74dade7f903a3a410abb27d01
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34814
+Reviewed-on: https://android.intel.com:443/519782
+---
+ drivers/usb/dwc3/gadget.c | 20 ++++++++++++++++++--
+ 1 file changed, 18 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index 1870aa2..2cb8e18 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -2237,7 +2237,15 @@ static int dwc3_cleanup_done_reqs(struct dwc3 *dwc, struct dwc3_ep *dep,
+ 			break;
+ 	} while (1);
+ 
+-	if (dep->endpoint.desc && usb_endpoint_xfer_isoc(dep->endpoint.desc) &&
++	/*
++	 * Our endpoint might get disabled by another thread during
++	 * dwc3_gadget_giveback(). If that happens, we're just gonna return 1
++	 * early on so DWC3_EP_BUSY flag gets cleared
++	 */
++	if (!dep->endpoint.desc)
++		return 1;
++
++	if (usb_endpoint_xfer_isoc(dep->endpoint.desc) &&
+ 			list_empty(&dep->started_list)) {
+ 		if (list_empty(&dep->pending_list)) {
+ 			/*
+@@ -2275,7 +2283,7 @@ static void dwc3_endpoint_transfer_complete(struct dwc3 *dwc,
+ 		status = -ECONNRESET;
+ 
+ 	clean_busy = dwc3_cleanup_done_reqs(dwc, dep, event, status);
+-	if (clean_busy && (is_xfer_complete ||
++	if (clean_busy && (!dep->endpoint.desc || is_xfer_complete ||
+ 				usb_endpoint_xfer_isoc(dep->endpoint.desc)))
+ 		dep->flags &= ~DWC3_EP_BUSY;
+ 
+@@ -2304,6 +2312,14 @@ static void dwc3_endpoint_transfer_complete(struct dwc3 *dwc,
+ 		dwc->u1u2 = 0;
+ 	}
+ 
++	/*
++	 * Our endpoint might get disabled by another thread during
++	 * dwc3_gadget_giveback(). If that happens, we're just gonna return 1
++	 * early on so DWC3_EP_BUSY flag gets cleared
++	 */
++	if (!dep->endpoint.desc)
++		return;
++
+ 	if (!usb_endpoint_xfer_isoc(dep->endpoint.desc)) {
+ 		int ret;
+ 
+-- 
+1.9.1
+

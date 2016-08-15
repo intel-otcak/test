@@ -1,0 +1,200 @@
+From 05a50875309558216aad293641120cfe6501c6a3 Mon Sep 17 00:00:00 2001
+From: Zhang Yanmin <yanmin.zhang@intel.com>
+Date: Wed, 13 Apr 2016 02:53:26 +0800
+Subject: [PATCH 9/9] SSIC: Disable D3 entry on every SSIC disconnect V2
+
+This patch is a WA to disable D3 entry on every SSIC disconnect.
+It was observed that the xHCI enters the D0i3 state before
+the SSIC device (Intel modem) has a chance to fully enumerate,
+as a consequence the enumeration fails.
+
+The patch fixes it by blocking xhci runtime pm between disconnect
+and enumeration end.
+
+Comparing with the original patch, this patch has below improvement.
+1) With the original patch, FFD still hits SWWDT related to xhci;
+2) The new patch doesn't touch codes around did_runtime_put, which
+looks quite like a workaround.
+3) The new patch blocks runtime of bus->controller device (it's xhci)
+instead of port_dev.
+4) The original patch doesn't block s3. This new patch blocks s3
+till modem enumeration finishes.
+5) The new patch simplifies coding by removing 2 files.
+
+Change-Id: Icb2e561951225c903d91876b711067d0e1230fd4
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-28971
+Signed-off-by: Zhong Yang <yang.zhong@intel.com>
+Signed-off-by: Zhang Yanmin <yanmin.zhang@intel.com>
+Reviewed-on: https://android.intel.com:443/494020
+---
+ drivers/usb/core/hub.c            |  4 ++++
+ drivers/usb/host/xhci-intel-cap.c | 46 +++++++++++++++++++++++++++++++++++++++
+ drivers/usb/host/xhci-intel-cap.h |  7 ++++++
+ drivers/usb/host/xhci.c           |  6 +++++
+ drivers/usb/host/xhci.h           |  8 ++++++-
+ 5 files changed, 70 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/usb/core/hub.c b/drivers/usb/core/hub.c
+index fd6eb5b..df9c24e 100644
+--- a/drivers/usb/core/hub.c
++++ b/drivers/usb/core/hub.c
+@@ -32,6 +32,7 @@
+ #include <asm/byteorder.h>
+ 
+ #include "hub.h"
++#include "../host/xhci-intel-cap.h"
+ 
+ #define USB_VENDOR_GENESYS_LOGIC		0x05e3
+ #define HUB_QUIRK_CHECK_PORT_AUTOSUSPEND	0x01
+@@ -2118,6 +2119,8 @@ void usb_disconnect(struct usb_device **pdev)
+ 		sysfs_remove_link(&udev->dev.kobj, "port");
+ 		sysfs_remove_link(&port_dev->dev.kobj, "device");
+ 
++		hub_intel_ssic_check_block_runtime(udev);
++
+ 		if (!port_dev->did_runtime_put)
+ 			pm_runtime_put(&port_dev->dev);
+ 		else
+@@ -2435,6 +2438,7 @@ int usb_new_device(struct usb_device *udev)
+ 		}
+ 
+ 		pm_runtime_get_sync(&port_dev->dev);
++		hub_intel_ssic_check_unblock_runtime(udev);
+ 	}
+ 
+ 	(void) usb_create_ep_devs(&udev->dev, &udev->ep0, udev);
+diff --git a/drivers/usb/host/xhci-intel-cap.c b/drivers/usb/host/xhci-intel-cap.c
+index 7728c53..0cc2add 100644
+--- a/drivers/usb/host/xhci-intel-cap.c
++++ b/drivers/usb/host/xhci-intel-cap.c
+@@ -83,7 +83,10 @@ int xhci_intel_need_disable_stall(struct xhci_hcd *xhci)
+ 
+ 	/* Assign the values */
+ 	modem_present = modem_data->package.elements[0].integer.value;
++	xhci->ssic_device_present = modem_present;
+ 	xhci->ssic_port_number = modem_data->package.elements[1].integer.value;
++	xhci_warn(xhci, "ssic_device_present[%d] ssic_port_number[%d]\n",
++		xhci->ssic_device_present, xhci->ssic_port_number);
+ 	modem_type = modem_data->package.elements[2].integer.value;
+ 
+ 	/* Evaluate the values from ACPI */
+@@ -293,3 +296,46 @@ void xhci_intel_ssic_port_unused(struct xhci_hcd *xhci, bool unused)
+ 
+ }
+ EXPORT_SYMBOL_GPL(xhci_intel_ssic_port_unused);
++
++void hub_intel_ssic_check_block_runtime(struct usb_device *udev)
++{
++	struct usb_hcd *hcd = bus_to_hcd(udev->bus);
++	struct xhci_hcd *xhci = hcd_to_xhci(hcd);
++
++	xhci_warn(xhci, "udev[%s]: Check if need block ssic runtime, "
++			"portnum[%d] ssic_runtime_blocked[%d]\n",
++			dev_name(&udev->dev),
++			udev->portnum,
++			xhci->ssic_runtime_blocked);
++
++	if (xhci_intel_ssic_port_check(xhci, udev->portnum)) {
++		if (!xhci->ssic_runtime_blocked) {
++			xhci_warn(xhci, "block runtime\n");
++			wake_lock(&xhci->ssic_wake_lock);
++			xhci->ssic_runtime_blocked = 1;
++			pm_runtime_get(hcd->self.controller);
++		}
++	}
++}
++
++void hub_intel_ssic_check_unblock_runtime(struct usb_device *udev)
++{
++	struct usb_hcd *hcd = bus_to_hcd(udev->bus);
++	struct xhci_hcd *xhci = hcd_to_xhci(hcd);
++
++	xhci_warn(xhci, "udev[%s]: Check if need unblock ssic runtime, "
++			"portnum[%d] ssic_runtime_blocked[%d]\n",
++			dev_name(&udev->dev),
++			udev->portnum,
++			xhci->ssic_runtime_blocked);
++
++	if (xhci_intel_ssic_port_check(xhci, udev->portnum)) {
++		if (xhci->ssic_runtime_blocked) {
++			xhci_warn(xhci, "unblock runtime\n");
++			xhci->ssic_runtime_blocked = 0;
++			pm_runtime_put(hcd->self.controller);
++			wake_unlock(&xhci->ssic_wake_lock);
++		}
++	}
++}
++
+diff --git a/drivers/usb/host/xhci-intel-cap.h b/drivers/usb/host/xhci-intel-cap.h
+index d7becb7..828161d 100644
+--- a/drivers/usb/host/xhci-intel-cap.h
++++ b/drivers/usb/host/xhci-intel-cap.h
+@@ -15,6 +15,9 @@
+  */
+ 
+ /* Extended capability IDs for Intel Vendor Defined */
++
++#include "xhci.h"
++
+ #define XHCI_EXT_CAPS_INTEL_HOST_CAP	192
+ #define XHCI_EXT_CAPS_INTEL_SSIC	196
+ #define XHCI_EXT_CAPS_INTEL_SSIC_PROFILE	197
+@@ -73,3 +76,7 @@ extern void xhci_intel_ssic_port_unused(struct xhci_hcd *xhci, bool unused);
+ extern void xhci_change_ssic_regs(struct xhci_hcd *xhci, bool enable);
+ extern bool xhci_intel_ssic_port_check(struct xhci_hcd *xhci, int port);
+ extern int xhci_intel_need_disable_stall(struct xhci_hcd *xhci);
++
++extern void hub_intel_ssic_check_block_runtime(struct usb_device *udev);
++extern void hub_intel_ssic_check_unblock_runtime(struct usb_device *udev);
++
+diff --git a/drivers/usb/host/xhci.c b/drivers/usb/host/xhci.c
+index abd7dbc..828e9f8 100644
+--- a/drivers/usb/host/xhci.c
++++ b/drivers/usb/host/xhci.c
+@@ -4854,6 +4854,12 @@ int xhci_gen_setup(struct usb_hcd *hcd, xhci_get_quirks_t get_quirks)
+ 
+ 	xhci->quirks = quirks;
+ 
++	wake_lock_init(&xhci->ssic_wake_lock,
++			WAKE_LOCK_SUSPEND,
++			"xhci_enumeration");
++	/* In case ACPI doesn't provide info */
++	xhci->ssic_device_present = -1;
++
+ 	get_quirks(dev, xhci);
+ 
+ 	/* In xhci controllers which follow xhci 1.0 spec gives a spurious
+diff --git a/drivers/usb/host/xhci.h b/drivers/usb/host/xhci.h
+index f9e42b6..164ac24 100644
+--- a/drivers/usb/host/xhci.h
++++ b/drivers/usb/host/xhci.h
+@@ -28,6 +28,7 @@
+ #include <linux/timer.h>
+ #include <linux/kernel.h>
+ #include <linux/usb/hcd.h>
++#include <linux/wakelock.h>
+ 
+ /* Code sharing between pci-quirks and xhci hcd */
+ #include	"xhci-ext-caps.h"
+@@ -1591,6 +1592,12 @@ struct xhci_hcd {
+ 	u32			port_status_u0;
+ /* Compliance Mode Timer Triggered every 2 seconds */
+ #define COMP_MODE_RCVRY_MSECS 2000
++	/* SSIC device present */
++	int ssic_device_present;
++	/* SSIC runtime is blocked */
++	bool ssic_runtime_blocked;
++	struct wake_lock ssic_wake_lock;
++
+ 	/* SSIC port number */
+ 	int ssic_port_number;
+ };
+@@ -1895,5 +1902,4 @@ struct xhci_ep_ctx *xhci_get_ep_ctx(struct xhci_hcd *xhci, struct xhci_container
+ 
+ /* xHCI quirks */
+ bool xhci_compliance_mode_recovery_timer_quirk_check(void);
+-
+ #endif /* __LINUX_XHCI_HCD_H */
+-- 
+1.9.1
+

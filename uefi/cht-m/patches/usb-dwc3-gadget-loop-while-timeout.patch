@@ -1,0 +1,53 @@
+From 60347a259912f996ffd0180a4e0812a0342147c5 Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <felipe.balbi@linux.intel.com>
+Date: Mon, 23 May 2016 13:53:34 +0300
+Subject: [PATCH 17/41] usb: dwc3: gadget: loop while (timeout)
+
+instead of having infinite loop and always checking
+timeout value as a break condition, we can just
+decrement timeout inside while's condition.
+
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit f6bb225bb3ca7988ff373c62cc298e56cae1eee5)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I7da60f219417f4063b58aa6db1d894be984932c1
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34814
+Reviewed-on: https://android.intel.com:443/519787
+---
+ drivers/usb/dwc3/gadget.c | 18 ++++++------------
+ 1 file changed, 6 insertions(+), 12 deletions(-)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index ae38761..92d43fe 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -397,19 +397,13 @@ int dwc3_send_gadget_ep_cmd(struct dwc3_ep *dep, unsigned cmd,
+ 
+ 			break;
+ 		}
++	} while (--timeout);
+ 
+-		/*
+-		 * We can't sleep here, because it is also called from
+-		 * interrupt context.
+-		 */
+-		timeout--;
+-		if (!timeout) {
+-			dwc3_trace(trace_dwc3_gadget,
+-					"Command Timed Out");
+-			ret = -ETIMEDOUT;
+-			break;
+-		}
+-	} while (1);
++	if (timeout == 0) {
++		dwc3_trace(trace_dwc3_gadget,
++				"Command Timed Out");
++		ret = -ETIMEDOUT;
++	}
+ 
+ 	if (unlikely(susphy)) {
+ 		reg = dwc3_readl(dwc->regs, DWC3_GUSB2PHYCFG(0));
+-- 
+1.9.1
+

@@ -1,0 +1,72 @@
+From eecb0b6a9e18aa7653be20aeffbb608ef0ebbeb7 Mon Sep 17 00:00:00 2001
+From: John Youn <johnyoun@synopsys.com>
+Date: Thu, 19 May 2016 17:26:17 -0700
+Subject: [PATCH 09/13] usb: dwc3: gadget: Handle TRB index 0 when full or
+ empty
+
+If the trb->enqueue == trb->dequeue, then it could be full or empty.
+This could also happen at TRB index 0, so modify the check to handle
+that condition. At index 0, the previous TRB is the one just before the
+link TRB.
+
+Signed-off-by: John Youn <johnyoun@synopsys.com>
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit 5aa15fc093ae4b12d9431a8be533b75bff4d981c)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I6c67d6354af5f950f4a720f42c6342a5a0089fee
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34491
+Reviewed-on: https://android.intel.com:443/519133
+---
+ drivers/usb/dwc3/gadget.c | 28 ++++++++++++++++++++++------
+ 1 file changed, 22 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index cacf150..f51e250 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -876,6 +876,25 @@ static void dwc3_prepare_one_trb(struct dwc3_ep *dep,
+ 	trace_dwc3_prepare_trb(dep, trb);
+ }
+ 
++/**
++ * dwc3_ep_prev_trb() - Returns the previous TRB in the ring
++ * @dep: The endpoint with the TRB ring
++ * @index: The index of the current TRB in the ring
++ *
++ * Returns the TRB prior to the one pointed to by the index. If the
++ * index is 0, we will wrap backwards, skip the link TRB, and return
++ * the one just before that.
++ */
++static struct dwc3_trb *dwc3_ep_prev_trb(struct dwc3_ep *dep, u8 index)
++{
++	if (!index)
++		index = DWC3_TRB_NUM - 2;
++	else
++		index = dep->trb_enqueue - 1;
++
++	return &dep->trb_pool[index];
++}
++
+ static u32 dwc3_calc_trbs_left(struct dwc3_ep *dep)
+ {
+ 	struct dwc3_trb		*tmp;
+@@ -889,12 +908,9 @@ static u32 dwc3_calc_trbs_left(struct dwc3_ep *dep)
+ 	 * more transfers in our ring.
+ 	 */
+ 	if (dep->trb_enqueue == dep->trb_dequeue) {
+-		/* If we're full, enqueue/dequeue are > 0 */
+-		if (dep->trb_enqueue) {
+-			tmp = &dep->trb_pool[dep->trb_enqueue - 1];
+-			if (tmp->ctrl & DWC3_TRB_CTRL_HWO)
+-				return 0;
+-		}
++		tmp = dwc3_ep_prev_trb(dep, dep->trb_enqueue);
++		if (tmp->ctrl & DWC3_TRB_CTRL_HWO)
++			return 0;
+ 
+ 		return DWC3_TRB_NUM - 1;
+ 	}
+-- 
+1.9.1
+

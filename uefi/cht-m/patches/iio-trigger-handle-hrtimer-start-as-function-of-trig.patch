@@ -1,0 +1,57 @@
+From ed4560f614f887ded431bca15a75ef2f21fb0cfa Mon Sep 17 00:00:00 2001
+From: Viorel Suman <viorel.suman@intel.com>
+Date: Wed, 12 Aug 2015 17:22:23 +0300
+Subject: [PATCH 11/15] iio: trigger: handle hrtimer start as function of
+ trigger state
+
+On "try_reenable" call hrtimer is started regardless of the
+hrtimer trigger state thus hrtimer trigger remains started
+even if the trigger is explicitly disabled from user space.
+The patch fixes this.
+
+Change-Id: I4a7144461e25446e3e4fba09c2141ff74d3b7e3c
+Signed-off-by: Viorel Suman <viorel.suman@intel.com>
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-27736
+Orig-Tracked-On: https://jira01.devtools.intel.com/browse/OAM-26476
+Reviewed-on: https://android.intel.com:443/490330
+---
+ drivers/iio/trigger/iio-trig-hrtimer.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/iio/trigger/iio-trig-hrtimer.c b/drivers/iio/trigger/iio-trig-hrtimer.c
+index bc75656..78cd6dd 100644
+--- a/drivers/iio/trigger/iio-trig-hrtimer.c
++++ b/drivers/iio/trigger/iio-trig-hrtimer.c
+@@ -29,6 +29,7 @@ struct iio_hrtimer_info {
+ 	unsigned long sampling_frequency;
+ 	ktime_t period;
+ 	ktime_t last_event;
++	bool state;
+ };
+ 
+ static struct config_item_type iio_hrtimer_type = {
+@@ -104,6 +105,7 @@ static int iio_trig_hrtimer_set_state(struct iio_trigger *trig, bool state)
+ 	struct iio_hrtimer_info *trig_info;
+ 
+ 	trig_info = iio_trigger_get_drvdata(trig);
++	trig_info->state = state;
+ 
+ 	if (state)
+ 		hrtimer_start(&trig_info->timer, trig_info->period,
+@@ -120,10 +122,11 @@ static int iio_trig_hrtimer_try_reenable(struct iio_trigger *trig)
+ 	struct iio_hrtimer_info *trig_info;
+ 
+ 	trig_info = iio_trigger_get_drvdata(trig);
+-	hrtimer_start(&trig_info->timer,
++
++	if (trig_info->state)
++		hrtimer_start(&trig_info->timer,
+ 			ktime_add(trig_info->last_event, trig_info->period),
+ 			HRTIMER_MODE_ABS);
+-
+ 	return 0;
+ }
+ 
+-- 
+1.9.1
+

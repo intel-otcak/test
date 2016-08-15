@@ -1,0 +1,48 @@
+From 43096f1b23f593367493eef91965836f40fbda7c Mon Sep 17 00:00:00 2001
+From: Jianqiang Tang <jianqiang.tang@intel.com>
+Date: Wed, 20 Jan 2016 14:09:39 +0800
+Subject: [PATCH 46/78] usb: dwc3: gadget: set the OTG flag in dwc3 gadget
+ driver.
+
+This patch is needed in order to pass one test case
+defined in the OTG Automated Compliance Test specification.
+
+Specification location:
+http://www.usb.org/developers/onthego/otgeh_compliance_plan_1_2.pdf
+
+This test case uses PET Tool, and PET Tool is one USB hardware
+equipment provided by MQP Electronics.
+
+Test case id is 6.8.3 B-UUT Bypass Capacitance.
+
+We must set this otg flag in order to be able to return OTG
+descriptor during enumeration, otherwise this test case with
+failed with below error: "Get OTG descriptor request stalled".
+
+Signed-off-by: Jianqiang Tang <jianqiang.tang@intel.com>
+Signed-off-by: Felipe Balbi <balbi@kernel.org>
+(cherry picked from commit 6a4290cc28be12d72d50644bd4bda1aede37cd41)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I09f03990bddf8944745e7fe79f61afae6c8edc5c
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-19337
+Reviewed-on: https://android.intel.com:443/511171
+---
+ drivers/usb/dwc3/gadget.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index 98a7429..8059eae 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -2932,6 +2932,7 @@ int dwc3_gadget_init(struct dwc3 *dwc)
+ 	dwc->gadget.speed		= USB_SPEED_UNKNOWN;
+ 	dwc->gadget.sg_supported	= true;
+ 	dwc->gadget.name		= "dwc3-gadget";
++	dwc->gadget.is_otg		= dwc->dr_mode == USB_DR_MODE_OTG;
+ 
+ 	/*
+ 	 * Per databook, DWC3 needs buffer size to be aligned to MaxPacketSize
+-- 
+1.9.1
+

@@ -1,0 +1,669 @@
+From ffdc079d3fa30e7715ad7c634769728e9e5c9872 Mon Sep 17 00:00:00 2001
+From: sys_icgvert <icgvert@intel.com>
+Date: Thu, 5 May 2016 17:28:53 -0700
+Subject: [PATCH 41/41] atomisp2: css2400 and 2401
+ irci_ecr-master_20160505_1500
+
+Merge CSS2.1 for css2400 and 2401_legacy pkg
+
+Change-Id: I00c5de0115b7ed977ac200ad97cb15b9a4c044b0
+FW: tag irci_ecr-master_20160505_1500
+Original-Tracked_On: #H1405007734
+Signed-off-by: sys_icgvert <icgvert@intel.com>
+Reviewed-on: https://icggerrit.ir.intel.com/118954
+Build: Dessert M BXT RVP (SC)
+Build: Dessert M BTNS (SC)
+Build: Dessert M CHT FFD (SC)
+Validation-Android: Dessert M BXT RVP (SC)
+Approver: Fan F Yang <fan.f.yang@intel.com>
+Reviewed-by: Fan F Yang <fan.f.yang@intel.com>
+Integrator: WeiX Meng <weix.meng@intel.com>
+Reviewed-by: WeiX Meng <weix.meng@intel.com>
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-31397
+Signed-off-by: Tao Wei <wei.tao@intel.com>
+Reviewed-on: https://android.intel.com:443/505282
+---
+ .../atomisp2/css/camera/pipe/src/pipe_binarydesc.c |  5 ++
+ .../css/hive_isp_css_include/cpu_mem_support.h     |  4 +-
+ .../camera/drivers/media/pci/atomisp2/css/ia_css.h |  2 +-
+ .../media/pci/atomisp2/css/ia_css_acc_types.h      |  1 +
+ .../drivers/media/pci/atomisp2/css/ia_css_types.h  |  2 +-
+ .../media/pci/atomisp2/css/ia_css_version_data.h   |  2 +-
+ .../css/isp/kernels/bnlm/ia_css_bnlm.host.c        | 58 ++++++++-----------
+ .../css/isp/kernels/ob/ob2/ia_css_ob2.host.c       |  2 +-
+ .../isp/kernels/sdis/sdis_1.0/ia_css_sdis.host.c   |  7 ++-
+ .../isp/kernels/sdis/sdis_2/ia_css_sdis2.host.c    | 67 +++++++++++++---------
+ .../css/isp/kernels/tdf/tdf_1.0/ia_css_tdf.host.c  | 52 ++++++++++++++++-
+ .../atomisp2/css/isp/modes/interface/isp_const.h   |  2 +
+ .../css/runtime/binary/interface/ia_css_binary.h   |  1 +
+ .../pci/atomisp2/css/runtime/binary/src/binary.c   | 10 ++++
+ .../camera/drivers/media/pci/atomisp2/css/sh_css.c |  1 -
+ .../media/pci/atomisp2/css/sh_css_firmware.c       | 18 +++---
+ .../media/pci/atomisp2/css/sh_css_param_dvs.c      | 17 +++---
+ .../drivers/media/pci/atomisp2/css/sh_css_params.c |  4 +-
+ 18 files changed, 167 insertions(+), 88 deletions(-)
+
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/camera/pipe/src/pipe_binarydesc.c b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/camera/pipe/src/pipe_binarydesc.c
+index 1815180..f8eb4bc 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/camera/pipe/src/pipe_binarydesc.c
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/camera/pipe/src/pipe_binarydesc.c
+@@ -58,6 +58,7 @@ static void pipe_binarydesc_get_offline(
+ 	descr->enable_dpc = false;
+ 	descr->enable_luma_only = false;
+ 	descr->enable_tnr = false;
++	descr->enable_rgbir_remosaic = false;
+ 	descr->enable_capture_pp_bli = false;
+ 	descr->enable_fractional_ds = false;
+ 	descr->dvs_env.width = 0;
+@@ -427,6 +428,8 @@ enum ia_css_err ia_css_pipe_get_video_binarydesc(
+ 			pipe->config.enable_luma_only;
+ 		video_descr->enable_tnr =
+ 			pipe->config.enable_tnr;
++		video_descr->enable_rgbir_remosaic =
++			pipe->stream->config.input_config.raw_type;
+ 
+ #if defined(IS_ISP_2500_SYSTEM)
+ /*
+@@ -658,6 +661,8 @@ void ia_css_pipe_get_primary_binarydesc(
+ 		    pipe->extra_config.enable_fractional_ds;
+ 		prim_descr->enable_luma_only =
+ 			pipe->config.enable_luma_only;
++		prim_descr->enable_rgbir_remosaic =
++			pipe->stream->config.input_config.raw_type;
+ 		/* We have both striped and non-striped primary binaries,
+ 		 * if continuous viewfinder is required, then we must select
+ 		 * a striped one. Otherwise we prefer to use a non-striped
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/hive_isp_css_include/cpu_mem_support.h b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/hive_isp_css_include/cpu_mem_support.h
+index 62040a5..43d0f09 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/hive_isp_css_include/cpu_mem_support.h
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/hive_isp_css_include/cpu_mem_support.h
+@@ -20,6 +20,8 @@ more details.
+ #else
+ #include <string.h> /* memset */
+ #endif
++#include "string_support.h"
++
+ 
+ #include "sh_css_internal.h" /* sh_css_malloc and sh_css_free */
+ 
+@@ -35,7 +37,7 @@ ia_css_cpu_mem_copy(void* dst, const void* src, unsigned int size)
+ 	if(!src || !dst)
+ 		return NULL;
+ 
+-	return memcpy(dst, src, size);
++	return memcpy_s(dst, size, src, size);
+ }
+ 
+ static inline void*
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css.h b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css.h
+index ddb1674..933b80b 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css.h
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css.h
+@@ -1,4 +1,4 @@
+-/* Release Version: irci_ecr-master_20160426_2016 */
++/* Release Version: irci_ecr-master_20160505_1500 */
+ /**
+ Support for Intel Camera Imaging ISP subsystem.
+ Copyright (c) 2010 - 2015, Intel Corporation.
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_acc_types.h b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_acc_types.h
+index a6f5963..019a9fd 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_acc_types.h
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_acc_types.h
+@@ -257,6 +257,7 @@ struct ia_css_binary_info {
+ 		uint8_t	routing_rgb_to_yuvp1;/**< connect RGB with YUVP1 ACCs*/
+ 		uint8_t	routing_yuvp1_to_yuvp2;/**< connect YUVP1 with YUVP2 ACCs*/
+ #endif
++		uint8_t	rgbir_remosaic;
+ 		uint8_t	luma_only;
+ 		uint8_t	input_yuv;
+ 		uint8_t	input_raw;
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_types.h b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_types.h
+index ec8438f..91ea6f3 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_types.h
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_types.h
+@@ -1,4 +1,4 @@
+-/* Release Version: irci_ecr-master_20160426_2016 */
++/* Release Version: irci_ecr-master_20160505_1500 */
+ /**
+ Support for Intel Camera Imaging ISP subsystem.
+ Copyright (c) 2010 - 2015, Intel Corporation.
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_version_data.h b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_version_data.h
+index ba23529..d62d458 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_version_data.h
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_version_data.h
+@@ -22,7 +22,7 @@ more details.
+ #define __IA_CSS_VERSION_DATA_H
+ 
+ 
+-#define CSS_VERSION_STRING "REL:20160426_17.2_2334; API:2.1.22.3; GIT:irci___#093cf6b8da3aeaddc74ea86139cac67cf785433b; SDK:; USER:viedifw; "
++#define CSS_VERSION_STRING "REL:20160505_18.4_1854; API:2.1.22.3; GIT:irci___#524c32413e531fc8858ddb38d92dd1a39f591479; SDK:; USER:viedifw; "
+ 
+ 
+ #endif
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/kernels/bnlm/ia_css_bnlm.host.c b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/kernels/bnlm/ia_css_bnlm.host.c
+index b0ccddb..d7e0993 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/kernels/bnlm/ia_css_bnlm.host.c
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/kernels/bnlm/ia_css_bnlm.host.c
+@@ -200,23 +200,6 @@ ia_css_bnlm_debug_dtrace(
+ 	ia_css_debug_dtrace(level, "\t%-32s = %d\n", "rad_enable", config->rad_enable);
+ 	ia_css_debug_dtrace(level, "\t%-32s = %d\n", "rad_x_origin", config->rad_x_origin);
+ 	ia_css_debug_dtrace(level, "\t%-32s = %d\n", "rad_y_origin", config->rad_y_origin);
+-	ia_css_debug_dtrace(level, "\t%-32s = %d\n", "avg_min_th", config->avg_min_th);
+-	ia_css_debug_dtrace(level, "\t%-32s = %d\n", "max_min_th", config->max_min_th);
+-
+-	ia_css_debug_dtrace(level, "\t%-32s = %d\n", "exp_coeff_a", config->exp_coeff_a);
+-	ia_css_debug_dtrace(level, "\t%-32s = %d\n", "exp_coeff_b", config->exp_coeff_b);
+-	ia_css_debug_dtrace(level, "\t%-32s = %d\n", "exp_coeff_c", config->exp_coeff_c);
+-	ia_css_debug_dtrace(level, "\t%-32s = %d\n", "exp_exponent", config->exp_exponent);
+-
+-	ia_css_debug_dtrace(level, "\t%-32s = {", "nl_th");
+-	for (i = 0; i < 3; i++)
+-		ia_css_debug_dtrace(level, "%d, ", config->nl_th[i]);
+-	ia_css_debug_dtrace(level, "}\n");
+-
+-	ia_css_debug_dtrace(level, "\t%-32s = {", "match_quality_max_idx");
+-	for (i = 0; i < 4; i++)
+-		ia_css_debug_dtrace(level, "%d, ", config->match_quality_max_idx[i]);
+-	ia_css_debug_dtrace(level, "}\n");
+ 
+ 	ia_css_debug_dtrace(level, "\t%-32s = {", "mu_root_lut_thr");
+ 	for (i = 0; i < (BNLM_MAX_NUM_LUT_ENTRIES - 1); i++)
+@@ -238,24 +221,24 @@ ia_css_bnlm_debug_dtrace(
+ 		ia_css_debug_dtrace(level, "%d, ", config->sad_norm_lut_val[i]);
+ 	ia_css_debug_dtrace(level, "}\n");
+ 
+-	ia_css_debug_dtrace(level, "\t%-32s = {", "sig_detail_lut_thr");
++	ia_css_debug_dtrace(level, "\t%-32s = {", "sig_rad_lut_thr");
+ 	for (i = 0; i < (BNLM_MAX_NUM_LUT_ENTRIES - 1); i++)
+-		ia_css_debug_dtrace(level, "%d, ", config->sig_detail_lut_thr[i]);
++		ia_css_debug_dtrace(level, "%d, ", config->sig_rad_lut_thr[i]);
+ 	ia_css_debug_dtrace(level, "}\n");
+ 
+-	ia_css_debug_dtrace(level, "\t%-32s = {", "sig_detail_lut_val");
++	ia_css_debug_dtrace(level, "\t%-32s = {", "sig_rad_lut_val");
+ 	for (i = 0; i < BNLM_MAX_NUM_LUT_ENTRIES; i++)
+-		ia_css_debug_dtrace(level, "%d, ", config->sig_detail_lut_val[i]);
++		ia_css_debug_dtrace(level, "%d, ", config->sig_rad_lut_val[i]);
+ 	ia_css_debug_dtrace(level, "}\n");
+ 
+-	ia_css_debug_dtrace(level, "\t%-32s = {", "sig_rad_lut_thr");
++	ia_css_debug_dtrace(level, "\t%-32s = {", "sig_detail_lut_thr");
+ 	for (i = 0; i < (BNLM_MAX_NUM_LUT_ENTRIES - 1); i++)
+-		ia_css_debug_dtrace(level, "%d, ", config->sig_rad_lut_thr[i]);
++		ia_css_debug_dtrace(level, "%d, ", config->sig_detail_lut_thr[i]);
+ 	ia_css_debug_dtrace(level, "}\n");
+ 
+-	ia_css_debug_dtrace(level, "\t%-32s = {", "sig_rad_lut_val");
++	ia_css_debug_dtrace(level, "\t%-32s = {", "sig_detail_lut_val");
+ 	for (i = 0; i < BNLM_MAX_NUM_LUT_ENTRIES; i++)
+-		ia_css_debug_dtrace(level, "%d, ", config->sig_rad_lut_val[i]);
++		ia_css_debug_dtrace(level, "%d, ", config->sig_detail_lut_val[i]);
+ 	ia_css_debug_dtrace(level, "}\n");
+ 
+ 	ia_css_debug_dtrace(level, "\t%-32s = {", "rad_pow_lut_thr");
+@@ -268,15 +251,11 @@ ia_css_bnlm_debug_dtrace(
+ 		ia_css_debug_dtrace(level, "%d, ", config->rad_pow_lut_val[i]);
+ 	ia_css_debug_dtrace(level, "}\n");
+ 
+-	ia_css_debug_dtrace(level, "\t%-32s = {", "nl_0_lut_thr");
+-	for (i = 0; i < (BNLM_MAX_NUM_LUT_ENTRIES - 1); i++)
+-		ia_css_debug_dtrace(level, "%d, ", config->nl_0_lut_thr[i]);
+-	ia_css_debug_dtrace(level, "}\n");
+ 
+-	ia_css_debug_dtrace(level, "\t%-32s = {", "nl_0_lut_val");
+-	for (i = 0; i < BNLM_MAX_NUM_LUT_ENTRIES; i++)
+-		ia_css_debug_dtrace(level, "%d, ", config->nl_0_lut_val[i]);
+-	ia_css_debug_dtrace(level, "}\n");
++	ia_css_debug_dtrace(level, "\t%-32s = %d\n", "exp_coeff_a", config->exp_coeff_a);
++	ia_css_debug_dtrace(level, "\t%-32s = %d\n", "exp_coeff_b", config->exp_coeff_b);
++	ia_css_debug_dtrace(level, "\t%-32s = %d\n", "exp_coeff_c", config->exp_coeff_c);
++	ia_css_debug_dtrace(level, "\t%-32s = %d\n", "exp_exponent", config->exp_exponent);
+ 
+ 	ia_css_debug_dtrace(level, "\t%-32s = {", "nl_0_lut_thr");
+ 	for (i = 0; i < (BNLM_MAX_NUM_LUT_ENTRIES - 1); i++)
+@@ -308,6 +287,19 @@ ia_css_bnlm_debug_dtrace(
+ 		ia_css_debug_dtrace(level, "%d, ", config->nl_3_lut_val[i]);
+ 	ia_css_debug_dtrace(level, "}\n");
+ 
++	ia_css_debug_dtrace(level, "\t%-32s = {", "nl_th");
++	for (i = 0; i < 3; i++)
++		ia_css_debug_dtrace(level, "%d, ", config->nl_th[i]);
++	ia_css_debug_dtrace(level, "}\n");
++
++	ia_css_debug_dtrace(level, "\t%-32s = {", "match_quality_max_idx");
++	for (i = 0; i < 4; i++)
++		ia_css_debug_dtrace(level, "%d, ", config->match_quality_max_idx[i]);
++	ia_css_debug_dtrace(level, "}\n");
++
++	ia_css_debug_dtrace(level, "\t%-32s = %d\n", "avg_min_th", config->avg_min_th);
++	ia_css_debug_dtrace(level, "\t%-32s = %d\n", "max_min_th", config->max_min_th);
++
+ #endif /* IA_CSS_NO_DEBUG */
+ 
+ }
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/kernels/ob/ob2/ia_css_ob2.host.c b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/kernels/ob/ob2/ia_css_ob2.host.c
+index 434c77e..d6ee07a 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/kernels/ob/ob2/ia_css_ob2.host.c
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/kernels/ob/ob2/ia_css_ob2.host.c
+@@ -72,7 +72,7 @@ ia_css_ob2_debug_dtrace(
+ {
+ 	ia_css_debug_dtrace(level,
+ 		"config.level_gr=%d, config.level_r=%d, "
+-		"config.level_b=%d,  config.level_gb=%d, ",
++		"config.level_b=%d,  config.level_gb=%d, \n",
+ 		config->level_gr, config->level_r,
+ 		config->level_b, config->level_gb);
+ }
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/kernels/sdis/sdis_1.0/ia_css_sdis.host.c b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/kernels/sdis/sdis_1.0/ia_css_sdis.host.c
+index 0b93cb3..7dc2411 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/kernels/sdis/sdis_1.0/ia_css_sdis.host.c
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/kernels/sdis/sdis_1.0/ia_css_sdis.host.c
+@@ -15,6 +15,7 @@ more details.
+ #include "memory_access.h"
+ #include "assert_support.h"
+ #include "ia_css_debug.h"
++#include "string_support.h"
+ #include "ia_css_sdis_types.h"
+ #include "sdis/common/ia_css_sdis_common.host.h"
+ #include "ia_css_sdis.host.h"
+@@ -30,7 +31,7 @@ fill_row(short *private, const short *public, unsigned width, unsigned padding)
+ {
+ 	assert((int)width >= 0);
+ 	assert((int)padding >= 0);
+-	memcpy (private, public, width*sizeof(short));
++	memcpy_s (private, width*sizeof(short), public, width*sizeof(short));
+ 	memset (&private[width], 0, padding*sizeof(short));
+ }
+ 
+@@ -279,11 +280,11 @@ ia_css_translate_dvs_statistics(
+ 	ver_ptr_dvs = host_stats->ver_proj;
+ 
+ 	for (i = 0; i < IA_CSS_DVS_NUM_COEF_TYPES; i++) {
+-		memcpy(hor_ptr_dvs, hor_ptr_isp, hor_num_dvs * sizeof(int32_t));
++		memcpy_s(hor_ptr_dvs, hor_num_dvs * sizeof(int32_t), hor_ptr_isp, hor_num_dvs * sizeof(int32_t));
+ 		hor_ptr_isp += hor_num_isp;
+ 		hor_ptr_dvs += hor_num_dvs;
+ 
+-		memcpy(ver_ptr_dvs, ver_ptr_isp, ver_num_dvs * sizeof(int32_t));
++		memcpy_s(ver_ptr_dvs, ver_num_dvs * sizeof(int32_t), ver_ptr_isp, ver_num_dvs * sizeof(int32_t));
+ 		ver_ptr_isp += ver_num_isp;
+ 		ver_ptr_dvs += ver_num_dvs;
+ 	}
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/kernels/sdis/sdis_2/ia_css_sdis2.host.c b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/kernels/sdis/sdis_2/ia_css_sdis2.host.c
+index dcb2145..d8644bf 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/kernels/sdis/sdis_2/ia_css_sdis2.host.c
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/kernels/sdis/sdis_2/ia_css_sdis2.host.c
+@@ -1,18 +1,29 @@
+ /**
+-Support for Intel Camera Imaging ISP subsystem.
+-Copyright (c) 2010 - 2015, Intel Corporation.
+-
+-This program is free software; you can redistribute it and/or modify it
+-under the terms and conditions of the GNU General Public License,
+-version 2, as published by the Free Software Foundation.
+-
+-This program is distributed in the hope it will be useful, but WITHOUT
+-ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+-FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+-more details.
++INTEL CONFIDENTIAL
++
++Copyright (C) 2014 - 2016 Intel Corporation.
++All Rights Reserved.
++
++The source code contained or described herein and all documents
++related to the source code ("Material") are owned by Intel Corporation
++or licensors. Title to the Material remains with Intel
++Corporation or its licensors. The Material contains trade
++secrets and proprietary and confidential information of Intel or its
++licensors. The Material is protected by worldwide copyright
++and trade secret laws and treaty provisions. No part of the Material may
++be used, copied, reproduced, modified, published, uploaded, posted,
++transmitted, distributed, or disclosed in any way without Intel's prior
++express written permission.
++
++No License under any patent, copyright, trade secret or other intellectual
++property right is granted to or conferred upon you by disclosure or
++delivery of the Materials, either expressly, by implication, inducement,
++estoppel or otherwise. Any license under such intellectual property rights
++must be express and approved by Intel in writing.
+ */
+ 
+ #include <assert_support.h>
++#include "string_support.h"
+ #include "memory_access.h"
+ #include "ia_css_debug.h"
+ #include "ia_css_sdis2.host.h"
+@@ -26,7 +37,7 @@ const struct ia_css_dvs2_coefficients default_sdis2_config = {
+ static void
+ fill_row(short *private, const short *public, unsigned width, unsigned padding)
+ {
+-	memcpy (private, public, width*sizeof(short));
++	memcpy_s (private, width*sizeof(short), public, width*sizeof(short));
+ 	memset (&private[width], 0, padding*sizeof(short));
+ }
+ 
+@@ -135,14 +146,14 @@ void ia_css_get_isp_dvs2_coefficients(
+ 	hor_num_isp = dvs_binary->dis.coef.pad.width;
+ 	ver_num_isp = dvs_binary->dis.coef.pad.height;
+ 
+-	memcpy (hor_coefs_odd_real,  params->dvs2_coefs.hor_coefs.odd_real,  hor_num_3a * sizeof(short));
+-	memcpy (hor_coefs_odd_imag,  params->dvs2_coefs.hor_coefs.odd_imag,  hor_num_3a * sizeof(short));
+-	memcpy (hor_coefs_even_real, params->dvs2_coefs.hor_coefs.even_real, hor_num_3a * sizeof(short));
+-	memcpy (hor_coefs_even_imag, params->dvs2_coefs.hor_coefs.even_imag, hor_num_3a * sizeof(short));
+-	memcpy (ver_coefs_odd_real,  params->dvs2_coefs.ver_coefs.odd_real,  ver_num_3a * sizeof(short));
+-	memcpy (ver_coefs_odd_imag,  params->dvs2_coefs.ver_coefs.odd_imag,  ver_num_3a * sizeof(short));
+-	memcpy (ver_coefs_even_real, params->dvs2_coefs.ver_coefs.even_real, ver_num_3a * sizeof(short));
+-	memcpy (ver_coefs_even_imag, params->dvs2_coefs.ver_coefs.even_imag, ver_num_3a * sizeof(short));
++	memcpy_s (hor_coefs_odd_real,  hor_num_3a * sizeof(short), params->dvs2_coefs.hor_coefs.odd_real,  hor_num_3a * sizeof(short));
++	memcpy_s (hor_coefs_odd_imag,  hor_num_3a * sizeof(short), params->dvs2_coefs.hor_coefs.odd_imag,  hor_num_3a * sizeof(short));
++	memcpy_s (hor_coefs_even_real, hor_num_3a * sizeof(short), params->dvs2_coefs.hor_coefs.even_real, hor_num_3a * sizeof(short));
++	memcpy_s (hor_coefs_even_imag, hor_num_3a * sizeof(short), params->dvs2_coefs.hor_coefs.even_imag, hor_num_3a * sizeof(short));
++	memcpy_s (ver_coefs_odd_real,  ver_num_3a * sizeof(short), params->dvs2_coefs.ver_coefs.odd_real,  ver_num_3a * sizeof(short));
++	memcpy_s (ver_coefs_odd_imag,  ver_num_3a * sizeof(short), params->dvs2_coefs.ver_coefs.odd_imag,  ver_num_3a * sizeof(short));
++	memcpy_s (ver_coefs_even_real, ver_num_3a * sizeof(short), params->dvs2_coefs.ver_coefs.even_real, ver_num_3a * sizeof(short));
++	memcpy_s (ver_coefs_even_imag, ver_num_3a * sizeof(short), params->dvs2_coefs.ver_coefs.even_imag, ver_num_3a * sizeof(short));
+ 
+ 	IA_CSS_LEAVE("void");
+ }
+@@ -232,23 +243,23 @@ ia_css_translate_dvs2_statistics(
+ 	vtemp_ptr = isp_stats->ver_proj; /* vertical stats */
+ 	for (height = 0; height < host_stats->grid.aligned_height; height++) {
+ 		/* hor stats */
+-		memcpy(host_stats->hor_prod.odd_real + dst_offset,
++        	memcpy_s(host_stats->hor_prod.odd_real + dst_offset, size_bytes,
+ 			&htemp_ptr[0*table_size+src_offset], size_bytes);
+-		memcpy(host_stats->hor_prod.odd_imag + dst_offset,
++        	memcpy_s(host_stats->hor_prod.odd_imag + dst_offset, size_bytes,
+ 			&htemp_ptr[1*table_size+src_offset], size_bytes);
+-		memcpy(host_stats->hor_prod.even_real + dst_offset,
++        	memcpy_s(host_stats->hor_prod.even_real + dst_offset, size_bytes,
+ 			&htemp_ptr[2*table_size+src_offset], size_bytes);
+-		memcpy(host_stats->hor_prod.even_imag + dst_offset,
++        	memcpy_s(host_stats->hor_prod.even_imag + dst_offset, size_bytes,
+ 			&htemp_ptr[3*table_size+src_offset], size_bytes);
+ 
+ 		/* ver stats */
+-		memcpy(host_stats->ver_prod.odd_real + dst_offset,
++        	memcpy_s(host_stats->ver_prod.odd_real + dst_offset, size_bytes,
+ 			&vtemp_ptr[0*table_size+src_offset], size_bytes);
+-		memcpy(host_stats->ver_prod.odd_imag + dst_offset,
++        	memcpy_s(host_stats->ver_prod.odd_imag + dst_offset, size_bytes,
+ 			&vtemp_ptr[1*table_size+src_offset], size_bytes);
+-		memcpy(host_stats->ver_prod.even_real + dst_offset,
++        	memcpy_s(host_stats->ver_prod.even_real + dst_offset, size_bytes,
+ 			&vtemp_ptr[2*table_size+src_offset], size_bytes);
+-		memcpy(host_stats->ver_prod.even_imag + dst_offset,
++        	memcpy_s(host_stats->ver_prod.even_imag + dst_offset, size_bytes,
+ 			&vtemp_ptr[3*table_size+src_offset], size_bytes);
+ 
+ 		src_offset += table_width; /* aligned table width */
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/kernels/tdf/tdf_1.0/ia_css_tdf.host.c b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/kernels/tdf/tdf_1.0/ia_css_tdf.host.c
+index ddbf538..7d44a7d 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/kernels/tdf/tdf_1.0/ia_css_tdf.host.c
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/kernels/tdf/tdf_1.0/ia_css_tdf.host.c
+@@ -102,6 +102,54 @@ ia_css_tdf_debug_dtrace(
+ 	const struct ia_css_tdf_config *config,
+ 	unsigned level)
+ {
+-	(void)config;
+-	(void)level;
++	unsigned int row, col;
++
++	if (!config)
++		return;
++
++	ia_css_debug_dtrace(level, "\tthres_flat_table = {\n");
++	for (row = 0; row < TDF_BLOCK_SIZE_Y; row++) {
++		ia_css_debug_dtrace(level, "\t\t\t");
++		for (col = 0; col < TDF_BLOCK_SIZE_X; col++) {
++			ia_css_debug_dtrace(level, "%4d,",
++					    config->thres_flat_table[row*TDF_BLOCK_SIZE_Y + col]);
++		}
++		ia_css_debug_dtrace(level, row == TDF_BLOCK_SIZE_Y - 1 ? "}\n" : "\n");
++	}
++	ia_css_debug_dtrace(level, "\thres_detail_table = {\n");
++	for (row = 0; row < TDF_BLOCK_SIZE_Y; row++) {
++		ia_css_debug_dtrace(level, "\t\t\t");
++		for (col = 0; col < TDF_BLOCK_SIZE_X; col++) {
++			ia_css_debug_dtrace(level, "%4d,",
++					    config->thres_detail_table[row*TDF_BLOCK_SIZE_Y + col]);
++		}
++		ia_css_debug_dtrace(level, row == TDF_BLOCK_SIZE_Y - 1 ? "}\n" : "\n");
++	}
++	ia_css_debug_dtrace(level, "\thres_detail_table\n");
++	ia_css_debug_dtrace(level, "\t%-18s = %4d\t%-18s = %4d\n",
++			    "epsilon_0", config->epsilon_0,
++			    "epsilon_1", config->epsilon_1);
++	ia_css_debug_dtrace(level, "\t%-18s = %4d\t%-18s = %4d\n",
++			    "eps_scale_text", config->eps_scale_text,
++			    "eps_scale_edge", config->eps_scale_edge);
++	ia_css_debug_dtrace(level, "\t%-18s = %4d\t%-18s = %4d\n",
++			    "sepa_flat", config->sepa_flat,
++			    "sepa_edge", config->sepa_edge);
++	ia_css_debug_dtrace(level, "\t%-18s = %4d\t%-18s = %4d\t%-18s = %4d\n",
++			    "blend_flat", config->blend_flat,
++			    "blend_text", config->blend_text,
++			    "blend_edge", config->blend_edge);
++	ia_css_debug_dtrace(level, "\t%-18s = %4d\t%-18s = %4d\n",
++			    "shading_gain", config->shading_gain,
++			    "shading_base_gain", config->shading_base_gain);
++	ia_css_debug_dtrace(level, "\t%-18s = %4d\t%-18s = %4d\n",
++			    "local_y_gain", config->local_y_gain,
++			    "local_y_base_gain", config->local_y_base_gain);
++	ia_css_debug_dtrace(level, "\t%-18s = %4d\t%-18s = %4d\n",
++			    "rad_x_origin", config->rad_x_origin,
++			    "rad_y_origin", config->rad_y_origin);
++	ia_css_debug_dtrace(level, "\t%-18s = %4d\t%-18s = %4d\n",
++			    "blend_ratio", config->blend_ratio,
++			    "min_edge_thres", config->min_edge_thres);
++
+ }
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/modes/interface/isp_const.h b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/modes/interface/isp_const.h
+index b42a91d..07d416c 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/modes/interface/isp_const.h
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/modes/interface/isp_const.h
+@@ -197,6 +197,8 @@ more details.
+ #define SH_CSS_BINARY_ID_IF_TO_OSYS_PREVIEW                 241
+ #define SH_CSS_BINARY_ID_IF_TO_OSYS_PREVIEW_STRIPED         242
+ #define SH_CSS_BINARY_ID_IF_TO_RGBIR_REMOSAIC               243
++#define SH_CSS_BINARY_ID_VIDEO_RGBIR_IF_TO_OSYS             244
++#define SH_CSS_BINARY_ID_RGBIR_IF_TO_OSYS_PRIMARY           245
+ 
+ /* Skycam IR camera binaries */
+ #define SH_CSS_BINARY_ID_IR_IF_TO_OSYS                      300
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/runtime/binary/interface/ia_css_binary.h b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/runtime/binary/interface/ia_css_binary.h
+index 54ab384..539b56a 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/runtime/binary/interface/ia_css_binary.h
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/runtime/binary/interface/ia_css_binary.h
+@@ -110,6 +110,7 @@ struct ia_css_binary_descr {
+ 	bool enable_dpc;
+ 	bool enable_luma_only;
+ 	bool enable_tnr;
++	bool enable_rgbir_remosaic;
+ 	bool enable_capture_pp_bli;
+ 	struct ia_css_resolution dvs_env;
+ 	enum ia_css_stream_format stream_format;
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/runtime/binary/src/binary.c b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/runtime/binary/src/binary.c
+index 47fca95..9354f60 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/runtime/binary/src/binary.c
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/runtime/binary/src/binary.c
+@@ -1264,6 +1264,7 @@ ia_css_binary_find(struct ia_css_binary_descr *descr,
+ 	bool enable_reduced_pipe;
+ 	bool enable_capture_pp_bli;
+ 	bool enable_luma_only;
++	bool enable_rgbir_remosaic;
+ 	enum ia_css_err err = IA_CSS_ERR_INTERNAL_ERROR;
+ 	bool continuous;
+ 	unsigned int isp_pipe_version;
+@@ -1311,6 +1312,7 @@ ia_css_binary_find(struct ia_css_binary_descr *descr,
+ 	enable_reduced_pipe = descr->enable_reduced_pipe;
+ 	enable_capture_pp_bli = descr->enable_capture_pp_bli;
+ 	enable_luma_only = descr->enable_luma_only;
++	enable_rgbir_remosaic = descr->enable_rgbir_remosaic;
+ 	continuous = descr->continuous;
+ 	striped = descr->striped;
+ 	isp_pipe_version = descr->isp_pipe_version;
+@@ -1648,6 +1650,14 @@ ia_css_binary_find(struct ia_css_binary_descr *descr,
+ 			continue;
+ 		}
+ 
++		if (candidate->enable.rgbir_remosaic != enable_rgbir_remosaic) {
++			ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,
++				"ia_css_binary_find() [%d] continue: %d != %d\n",
++				__LINE__, candidate->enable.rgbir_remosaic,
++				descr->enable_rgbir_remosaic);
++			continue;
++		}
++
+ 		/* reconfigure any variable properties of the binary */
+ 		err = ia_css_binary_fill_info(xcandidate, online, two_ppc,
+ 				       stream_format, req_in_info,
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css.c b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css.c
+index d5807c1..ddc2b3e 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css.c
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css.c
+@@ -9808,7 +9808,6 @@ ia_css_stream_create(const struct ia_css_stream_config *stream_config,
+ 		curr_pipe = pipes[i];
+ 		/* set current stream */
+ 		curr_pipe->stream = curr_stream;
+-		curr_pipe->in_frame_struct.info.raw_type = curr_pipe->stream->config.input_config.raw_type;
+ 		/* take over effective info */
+ 
+ 		effective_res = curr_pipe->config.input_effective_res;
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_firmware.c b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_firmware.c
+index cf1046e..701f1ba 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_firmware.c
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_firmware.c
+@@ -30,6 +30,7 @@ more details.
+ #include "ia_css_isp_params.h"
+ #include "ia_css_isp_configs.h"
+ #include "ia_css_isp_states.h"
++#include "string_support.h" /* memcpy_s */
+ 
+ #define _STR(x) #x
+ #define STR(x) _STR(x)
+@@ -47,10 +48,10 @@ struct fw_param {
+ /* Warning: same order as SH_CSS_BINARY_ID_* */
+ static struct firmware_header *firmware_header;
+ 
+-/* The string STR(irci_ecr-master_20160426_2016) is a place holder
++/* The string STR(irci_ecr-master_20160505_1500) is a place holder
+  * which will be replaced with the actual RELEASE_VERSION
+  * during package generation. Please do not modify  */
+-static const char *release_version = STR(irci_ecr-master_20160426_2016);
++static const char *release_version = STR(irci_ecr-master_20160505_1500);
+ 
+ #define MAX_FW_REL_VER_NAME	300
+ static char FW_rel_ver_name[MAX_FW_REL_VER_NAME] = "---";
+@@ -100,7 +101,8 @@ setup_binary(struct ia_css_fw_info *fw, const char *fw_data, struct ia_css_fw_in
+ 	if (sh_css_fw->blob.code == NULL)
+ 		return IA_CSS_ERR_CANNOT_ALLOCATE_MEMORY;
+ 
+-	memcpy((void *)sh_css_fw->blob.code, blob_data, fw->blob.size);
++	memcpy_s((void *)sh_css_fw->blob.code, fw->blob.size, blob_data, fw->blob.size);
++
+ 	sh_css_fw->blob.data = (char *)sh_css_fw->blob.code + fw->blob.data_source;
+ 	fw_minibuffer[binary_id].buffer = sh_css_fw->blob.code;
+ 
+@@ -149,7 +151,7 @@ sh_css_load_blob_info(const char *fw, const struct ia_css_fw_info *bi, struct ia
+ 		if (namebuffer == NULL)
+ 			return IA_CSS_ERR_CANNOT_ALLOCATE_MEMORY;
+ 
+-		memcpy(namebuffer, name, namelength+1);
++		memcpy_s(namebuffer, namelength+1, name, namelength+1);
+ 
+ 		bd->name = fw_minibuffer[index].name = namebuffer;
+ 	} else {
+@@ -172,18 +174,20 @@ sh_css_load_blob_info(const char *fw, const struct ia_css_fw_info *bi, struct ia
+ 		fw_minibuffer[index].buffer = parambuf;
+ 
+ 		/* copy ia_css_memory_offsets */
+-		memcpy(parambuf, (void *)(fw + bi->blob.memory_offsets.offsets[IA_CSS_PARAM_CLASS_PARAM]),
++		memcpy_s(parambuf, (paramstruct_size + configstruct_size + statestruct_size), (void *)(fw + bi->blob.memory_offsets.offsets[IA_CSS_PARAM_CLASS_PARAM]),
+ 			paramstruct_size);
+ 		bd->mem_offsets.array[IA_CSS_PARAM_CLASS_PARAM].ptr = parambuf;
+ 
+ 		/* copy ia_css_config_memory_offsets */
+-		memcpy(parambuf + paramstruct_size,
++		memcpy_s(parambuf + paramstruct_size,
++				(configstruct_size + statestruct_size),
+ 				(void *)(fw + bi->blob.memory_offsets.offsets[IA_CSS_PARAM_CLASS_CONFIG]),
+ 				configstruct_size);
+ 		bd->mem_offsets.array[IA_CSS_PARAM_CLASS_CONFIG].ptr = parambuf + paramstruct_size;
+ 
+ 		/* copy ia_css_state_memory_offsets */
+-		memcpy(parambuf + paramstruct_size + configstruct_size,
++		memcpy_s(parambuf + paramstruct_size + configstruct_size,
++				 statestruct_size,
+ 				(void *)(fw + bi->blob.memory_offsets.offsets[IA_CSS_PARAM_CLASS_STATE]),
+ 				statestruct_size);
+ 		bd->mem_offsets.array[IA_CSS_PARAM_CLASS_STATE].ptr = parambuf + paramstruct_size + configstruct_size;
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_param_dvs.c b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_param_dvs.c
+index 26350c9..c68f791 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_param_dvs.c
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_param_dvs.c
+@@ -19,6 +19,7 @@ more details.
+ #include <ia_css_types.h>
+ #include "ia_css_debug.h"
+ #include "memory_access.h"
++#include "string_support.h" /* memcpy_s */
+ 
+ #if defined(IS_ISP_2500_SYSTEM)
+ #include <components/acc_cluster/acc_dvs_stat/dvs_stat_private.h>
+@@ -146,10 +147,10 @@ init_dvs_6axis_table_from_config(struct ia_css_dvs_6axis_config *dvs_config, str
+ 	unsigned int width_uv = dvs_config->width_uv;
+ 	unsigned int height_uv = dvs_config->height_uv;
+ 
+-	memcpy(dvs_config->xcoords_y, dvs_config_src->xcoords_y, (width_y * height_y * sizeof(uint32_t)));
+-	memcpy(dvs_config->ycoords_y, dvs_config_src->ycoords_y, (width_y * height_y * sizeof(uint32_t)));
+-	memcpy(dvs_config->xcoords_uv, dvs_config_src->xcoords_uv, (width_uv * height_uv * sizeof(uint32_t)));
+-	memcpy(dvs_config->ycoords_uv, dvs_config_src->ycoords_uv, (width_uv * height_uv * sizeof(uint32_t)));
++	memcpy_s(dvs_config->xcoords_y, (width_y * height_y * sizeof(uint32_t)), dvs_config_src->xcoords_y, (width_y * height_y * sizeof(uint32_t)));
++	memcpy_s(dvs_config->ycoords_y, (width_y * height_y * sizeof(uint32_t)), dvs_config_src->ycoords_y, (width_y * height_y * sizeof(uint32_t)));
++	memcpy_s(dvs_config->xcoords_uv, (width_uv * height_uv * sizeof(uint32_t)), dvs_config_src->xcoords_uv, (width_uv * height_uv * sizeof(uint32_t)));
++	memcpy_s(dvs_config->ycoords_uv, (width_uv * height_uv * sizeof(uint32_t)), dvs_config_src->ycoords_uv, (width_uv * height_uv * sizeof(uint32_t)));
+ }
+ 
+ struct ia_css_dvs_6axis_config *
+@@ -247,11 +248,11 @@ void copy_dvs_6axis_table(struct ia_css_dvs_6axis_config *dvs_config_dst,
+ 	width_uv = dvs_config_src->width_uv; /* = Y/2, depens on colour format YUV 4.2.0*/
+ 	height_uv = dvs_config_src->height_uv;
+ 
+-	memcpy(dvs_config_dst->xcoords_y, dvs_config_src->xcoords_y, (width_y * height_y * sizeof(uint32_t)));
+-	memcpy(dvs_config_dst->ycoords_y, dvs_config_src->ycoords_y, (width_y * height_y * sizeof(uint32_t)));
++	memcpy_s(dvs_config_dst->xcoords_y, (width_y * height_y * sizeof(uint32_t)), dvs_config_src->xcoords_y, (width_y * height_y * sizeof(uint32_t)));
++	memcpy_s(dvs_config_dst->ycoords_y, (width_y * height_y * sizeof(uint32_t)), dvs_config_src->ycoords_y, (width_y * height_y * sizeof(uint32_t)));
+ 
+-	memcpy(dvs_config_dst->xcoords_uv, dvs_config_src->xcoords_uv, (width_uv * height_uv * sizeof(uint32_t)));
+-	memcpy(dvs_config_dst->ycoords_uv, dvs_config_src->ycoords_uv, (width_uv * height_uv * sizeof(uint32_t)));
++	memcpy_s(dvs_config_dst->xcoords_uv, (width_uv * height_uv * sizeof(uint32_t)), dvs_config_src->xcoords_uv, (width_uv * height_uv * sizeof(uint32_t)));
++	memcpy_s(dvs_config_dst->ycoords_uv, (width_uv * height_uv * sizeof(uint32_t)), dvs_config_src->ycoords_uv, (width_uv * height_uv * sizeof(uint32_t)));
+ 
+ }
+ 
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_params.c b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_params.c
+index 6db677a..199395e 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_params.c
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_params.c
+@@ -32,6 +32,7 @@ more details.
+ #include "assert_support.h"
+ #include "misc_support.h"	/* NOT_USED */
+ #include "math_support.h"	/* max(), min()  EVEN_FLOOR()*/
++#include "string_support.h" /* memcpy_s */
+ 
+ #include "ia_css_stream.h"
+ #include "sh_css_params_internal.h"
+@@ -1697,7 +1698,8 @@ ia_css_params_alloc_convert_sctbl(
+ 
+ 	for (i = 0; i < shading_table->height; i++) {
+ 		for (j = 0; j < IA_CSS_SC_NUM_COLORS; j++) {
+-			memcpy(ptr,
++			memcpy_s(ptr,
++				    sctbl_size,
+ 				   &shading_table->data[j]
+ 					[i*shading_table->width],
+ 				   shading_table->width * sizeof(short));
+-- 
+1.9.1
+

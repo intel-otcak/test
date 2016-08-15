@@ -1,0 +1,215 @@
+From 6a7f71e601bacc532787ecdb1c3c79d9e7838547 Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <felipe.balbi@linux.intel.com>
+Date: Mon, 23 May 2016 11:10:08 +0300
+Subject: [PATCH 01/13] usb: dwc3: trace: fully decode IRQ events
+
+This will make it more human-friendly to read trace
+output from dwc3.
+
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit b37d80399fcfff3048e731461e7ffeb71d9be3e7)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Conflicts:
+	drivers/usb/dwc3/trace.h
+
+Change-Id: If294f48a1c49b51c7bb5290a9192eeee8a612a29
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34491
+Reviewed-on: https://android.intel.com:443/515262
+---
+ drivers/usb/dwc3/debug.h | 110 +++++++++++++++++++++++++++++++++++++----------
+ drivers/usb/dwc3/ep0.c   |   7 +--
+ drivers/usb/dwc3/trace.h |   3 +-
+ 3 files changed, 92 insertions(+), 28 deletions(-)
+
+diff --git a/drivers/usb/dwc3/debug.h b/drivers/usb/dwc3/debug.h
+index 07fbc2d..c74e2f7 100644
+--- a/drivers/usb/dwc3/debug.h
++++ b/drivers/usb/dwc3/debug.h
+@@ -128,56 +128,112 @@ dwc3_gadget_link_string(enum dwc3_link_state link_state)
+  * dwc3_gadget_event_string - returns event name
+  * @event: the event code
+  */
+-static inline const char *dwc3_gadget_event_string(u8 event)
++static inline const char *
++dwc3_gadget_event_string(const struct dwc3_event_devt *event)
+ {
+-	switch (event) {
++	static char str[256];
++	enum dwc3_link_state state = event->event_info & DWC3_LINK_STATE_MASK;
++
++	switch (event->type) {
+ 	case DWC3_DEVICE_EVENT_DISCONNECT:
+-		return "Disconnect";
++		sprintf(str, "Disconnect: [%s]",
++				dwc3_gadget_link_string(state));
++		break;
+ 	case DWC3_DEVICE_EVENT_RESET:
+-		return "Reset";
++		sprintf(str, "Reset [%s]", dwc3_gadget_link_string(state));
++		break;
+ 	case DWC3_DEVICE_EVENT_CONNECT_DONE:
+-		return "Connection Done";
++		sprintf(str, "Connection Done [%s]",
++				dwc3_gadget_link_string(state));
++		break;
+ 	case DWC3_DEVICE_EVENT_LINK_STATUS_CHANGE:
+-		return "Link Status Change";
++		sprintf(str, "Link Change [%s]",
++				dwc3_gadget_link_string(state));
++		break;
+ 	case DWC3_DEVICE_EVENT_WAKEUP:
+-		return "WakeUp";
++		sprintf(str, "WakeUp [%s]", dwc3_gadget_link_string(state));
++		break;
+ 	case DWC3_DEVICE_EVENT_EOPF:
+-		return "End-Of-Frame";
++		sprintf(str, "End-Of-Frame [%s]",
++				dwc3_gadget_link_string(state));
++		break;
+ 	case DWC3_DEVICE_EVENT_SOF:
+-		return "Start-Of-Frame";
++		sprintf(str, "Start-Of-Frame [%s]",
++				dwc3_gadget_link_string(state));
++		break;
+ 	case DWC3_DEVICE_EVENT_ERRATIC_ERROR:
+-		return "Erratic Error";
++		sprintf(str, "Erratic Error [%s]",
++				dwc3_gadget_link_string(state));
++		break;
+ 	case DWC3_DEVICE_EVENT_CMD_CMPL:
+-		return "Command Complete";
++		sprintf(str, "Command Complete [%s]",
++				dwc3_gadget_link_string(state));
++		break;
+ 	case DWC3_DEVICE_EVENT_OVERFLOW:
+-		return "Overflow";
++		sprintf(str, "Overflow [%s]", dwc3_gadget_link_string(state));
++		break;
++	default:
++		sprintf(str, "UNKNOWN");
+ 	}
+ 
+-	return "UNKNOWN";
++	return str;
+ }
+ 
+ /**
+  * dwc3_ep_event_string - returns event name
+  * @event: then event code
+  */
+-static inline const char *dwc3_ep_event_string(u8 event)
++static inline const char *
++dwc3_ep_event_string(const struct dwc3_event_depevt *event)
+ {
+-	switch (event) {
++	u8 epnum = event->endpoint_number;
++	static char str[256];
++	int status;
++	int ret;
++
++	ret = sprintf(str, "ep%d%s: ", epnum >> 1,
++			(epnum & 1) ? "in" : "in");
++	if (ret < 0)
++		return "UNKNOWN";
++
++	switch (event->endpoint_event) {
+ 	case DWC3_DEPEVT_XFERCOMPLETE:
+-		return "Transfer Complete";
++		strcat(str, "Transfer Complete");
++		break;
+ 	case DWC3_DEPEVT_XFERINPROGRESS:
+-		return "Transfer In-Progress";
++		strcat(str, "Transfer In-Progress");
++		break;
+ 	case DWC3_DEPEVT_XFERNOTREADY:
+-		return "Transfer Not Ready";
++		strcat(str, "Transfer Not Ready");
++		status = event->status & DEPEVT_STATUS_TRANSFER_ACTIVE;
++		strcat(str, status ? " (Active)" : " (Not Active)");
++		break;
+ 	case DWC3_DEPEVT_RXTXFIFOEVT:
+-		return "FIFO";
++		strcat(str, "FIFO");
++		break;
+ 	case DWC3_DEPEVT_STREAMEVT:
+-		return "Stream";
++		status = event->status;
++
++		switch (status) {
++		case DEPEVT_STREAMEVT_FOUND:
++			sprintf(str + ret, " Stream %d Found",
++					event->parameters);
++			break;
++		case DEPEVT_STREAMEVT_NOTFOUND:
++		default:
++			strcat(str, " Stream Not Found");
++			break;
++		}
++
++		break;
+ 	case DWC3_DEPEVT_EPCMDCMPLT:
+-		return "Endpoint Command Complete";
++		strcat(str, "Endpoint Command Complete");
++		break;
++	default:
++		sprintf(str, "UNKNOWN");
+ 	}
+ 
+-	return "UNKNOWN";
++	return str;
+ }
+ 
+ /**
+@@ -214,6 +270,16 @@ static inline const char *dwc3_gadget_event_type_string(u8 event)
+ 	}
+ }
+ 
++static inline const char *dwc3_decode_event(u32 event)
++{
++	const union dwc3_event evt = (union dwc3_event) event;
++
++	if (evt.type.is_devspec)
++		return dwc3_gadget_event_string(&evt.devt);
++	else
++		return dwc3_ep_event_string(&evt.depevt);
++}
++
+ void dwc3_trace(void (*trace)(struct va_format *), const char *fmt, ...);
+ 
+ #ifdef CONFIG_DEBUG_FS
+diff --git a/drivers/usb/dwc3/ep0.c b/drivers/usb/dwc3/ep0.c
+index 4ca2084..2cb7906 100644
+--- a/drivers/usb/dwc3/ep0.c
++++ b/drivers/usb/dwc3/ep0.c
+@@ -1136,11 +1136,8 @@ static void dwc3_ep0_xfernotready(struct dwc3 *dwc,
+ void dwc3_ep0_interrupt(struct dwc3 *dwc,
+ 		const struct dwc3_event_depevt *event)
+ {
+-	u8			epnum = event->endpoint_number;
+-
+-	dwc3_trace(trace_dwc3_ep0, "%s while ep%d%s in state '%s'",
+-			dwc3_ep_event_string(event->endpoint_event),
+-			epnum >> 1, (epnum & 1) ? "in" : "out",
++	dwc3_trace(trace_dwc3_ep0, "%s: state '%s'",
++			dwc3_ep_event_string(event),
+ 			dwc3_ep0_state_string(dwc->ep0state));
+ 
+ 	switch (event->endpoint_event) {
+diff --git a/drivers/usb/dwc3/trace.h b/drivers/usb/dwc3/trace.h
+index a489638..659cc9b 100644
+--- a/drivers/usb/dwc3/trace.h
++++ b/drivers/usb/dwc3/trace.h
+@@ -71,7 +71,8 @@ DECLARE_EVENT_CLASS(dwc3_log_event,
+ 	TP_fast_assign(
+ 		__entry->event_raw = event_raw;
+ 	),
+-	TP_printk("event %08x", __entry->event_raw)
++	TP_printk("event (%08x): %s", __entry->event_raw,
++			dwc3_decode_event(__entry->event_raw))
+ );
+ 
+ DEFINE_EVENT(dwc3_log_event, dwc3_event,
+-- 
+1.9.1
+

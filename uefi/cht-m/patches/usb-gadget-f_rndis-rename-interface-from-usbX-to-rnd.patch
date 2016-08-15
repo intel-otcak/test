@@ -1,0 +1,34 @@
+From 67015430cf76ae8642f5272a430b174d4eb32c8e Mon Sep 17 00:00:00 2001
+From: Krzysztof Adamski <krzysztofx.adamski@intel.com>
+Date: Tue, 28 Jun 2016 10:47:04 +0200
+Subject: [PATCH 2/3] usb: gadget: f_rndis: rename interface from usbX to
+ rndisX
+
+Old USB gadget configuration method (g_android) used rndisX for the
+rndis interface name. Java based userspace is currently configured to
+expect this interface to be named like this so lets make it happy.
+
+Change-Id: Ib3f400c6e74c57e11f097cee065887ee0e67c814
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34750
+Signed-off-by: Krzysztof Adamski <krzysztofx.adamski@intel.com>
+Reviewed-on: https://android.intel.com:443/519850
+---
+ drivers/usb/gadget/f_rndis.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/usb/gadget/f_rndis.c b/drivers/usb/gadget/f_rndis.c
+index 11a80e9..554f7b9 100644
+--- a/drivers/usb/gadget/f_rndis.c
++++ b/drivers/usb/gadget/f_rndis.c
+@@ -929,7 +929,7 @@ static struct usb_function_instance *rndis_alloc_inst(void)
+ 
+ 	mutex_init(&opts->lock);
+ 	opts->func_inst.free_func_inst = rndis_free_inst;
+-	opts->net = gether_setup_default();
++	opts->net = gether_setup_name_default("rndis");
+ 	if (IS_ERR(opts->net)) {
+ 		struct net_device *net = opts->net;
+ 		kfree(opts);
+-- 
+1.9.1
+

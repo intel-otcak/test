@@ -1,0 +1,37 @@
+From 948fc8d714f678af5831acb5126048c09f8beabe Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <balbi@ti.com>
+Date: Tue, 4 Mar 2014 09:35:02 -0600
+Subject: [PATCH 06/41] usb: dwc3: define more revisions
+
+few new revisions of the core have been released,
+add them to our list of revisions so we can apply
+workarounds if necessary.
+
+Signed-off-by: Felipe Balbi <balbi@ti.com>
+(cherry picked from commit dbf5aaf7ce29fb623d4e74818bc4fb3e9c84632e)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: Ica73f354b5e6ff0f3d16ddd7d4af4d814b5c8af5
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34814
+Reviewed-on: https://android.intel.com:443/519776
+---
+ drivers/usb/dwc3/core.h | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/usb/dwc3/core.h b/drivers/usb/dwc3/core.h
+index 621bc19..29b73bf 100644
+--- a/drivers/usb/dwc3/core.h
++++ b/drivers/usb/dwc3/core.h
+@@ -753,6 +753,9 @@ struct dwc3 {
+ #define DWC3_REVISION_230A	0x5533230a
+ #define DWC3_REVISION_240A	0x5533240a
+ #define DWC3_REVISION_250A	0x5533250a
++#define DWC3_REVISION_260A	0x5533260a
++#define DWC3_REVISION_270A	0x5533270a
++#define DWC3_REVISION_280A	0x5533280a
+ 
+ 	unsigned		is_selfpowered:1;
+ 	unsigned		three_stage_setup:1;
+-- 
+1.9.1
+

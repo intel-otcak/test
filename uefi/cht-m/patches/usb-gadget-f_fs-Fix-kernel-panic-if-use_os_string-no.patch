@@ -1,0 +1,62 @@
+From 00fb18b1e69cc143ceb7d931fcf3344abb82e980 Mon Sep 17 00:00:00 2001
+From: Jim Lin <jilin@nvidia.com>
+Date: Fri, 13 May 2016 20:32:16 +0800
+Subject: [PATCH 06/11] usb: gadget: f_fs: Fix kernel panic if use_os_string
+ not set
+
+If c->cdev->use_os_string flag is not set,
+don't need to invoke ffs_do_os_descs() in _ffs_func_bind.
+So uninitialized ext_compat_id pointer won't be accessed by
+__ffs_func_bind_do_os_desc to cause kernel panic.
+
+Signed-off-by: Jim Lin <jilin@nvidia.com>
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+
+(cherry picked from commit c6010c8b4d2c6e75853ca63c602c9af56fcbead5)
+
+Change-Id: I933be890712d842dc7b3588e59c14007347a0bd6
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-31240
+Signed-off-by: Krzysztof Adamski <krzysztofx.adamski@intel.com>
+Reviewed-on: https://android.intel.com:443/517050
+---
+ drivers/usb/gadget/f_fs.c | 17 +++++++++--------
+ 1 file changed, 9 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/usb/gadget/f_fs.c b/drivers/usb/gadget/f_fs.c
+index e82ec12..73aa81b 100644
+--- a/drivers/usb/gadget/f_fs.c
++++ b/drivers/usb/gadget/f_fs.c
+@@ -2478,7 +2478,7 @@ static int _ffs_func_bind(struct usb_configuration *c,
+ 		goto error;
+ 
+ 	func->function.os_desc_table = vla_ptr(vlabuf, d, os_desc_table);
+-	if (c->cdev->use_os_string)
++	if (c->cdev->use_os_string) {
+ 		for (i = 0; i < ffs->interfaces_count; ++i) {
+ 			struct usb_os_desc *desc;
+ 
+@@ -2489,13 +2489,14 @@ static int _ffs_func_bind(struct usb_configuration *c,
+ 				vla_ptr(vlabuf, d, ext_compat) + i * 16;
+ 			INIT_LIST_HEAD(&desc->ext_prop);
+ 		}
+-	ret = ffs_do_os_descs(ffs->ms_os_descs_count,
+-			      vla_ptr(vlabuf, d, raw_descs) +
+-			      fs_len + hs_len + ss_len,
+-			      d_raw_descs__sz - fs_len - hs_len - ss_len,
+-			      __ffs_func_bind_do_os_desc, func);
+-	if (unlikely(ret < 0))
+-		goto error;
++		ret = ffs_do_os_descs(ffs->ms_os_descs_count,
++					  vla_ptr(vlabuf, d, raw_descs) +
++					  fs_len + hs_len + ss_len,
++					  d_raw_descs__sz - fs_len - hs_len - ss_len,
++					  __ffs_func_bind_do_os_desc, func);
++		if (unlikely(ret < 0))
++			goto error;
++	}
+ 	func->function.os_desc_n =
+ 		c->cdev->use_os_string ? ffs->interfaces_count : 0;
+ 
+-- 
+1.9.1
+

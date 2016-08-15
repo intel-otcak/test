@@ -1,0 +1,88 @@
+From 46e969cb56f6daf4c09d9ef2cba5106226f6bc8e Mon Sep 17 00:00:00 2001
+From: Janusz Dziedzic <januszx.dziedzic@linux.intel.com>
+Date: Fri, 20 May 2016 10:37:13 +0200
+Subject: [PATCH 15/78] usb: dwc3: trace: pretty-print TRB's ctrl field
+
+Improve trb tracing by showing trb flags, interrupts
+trb type.
+
+trb flags:
+- h - hardware owner of descriptor
+- l - last TRB
+- c - chain buffers
+- s - continue on short packet
+
+interrupt flags:
+- s - interrupt on short packet
+- c - interrupt on complete
+
+Capital letter means that bit is set, while
+lowercase letter means bit is cleared.
+
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@linux.intel.com>
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit 691cd4e4cfbb4c1e5ef0e214984e3fc8e68de910)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I88c85f022d8fce45b54b00ccf5857803cce6c85b
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-29845
+Reviewed-on: https://android.intel.com:443/508488
+---
+ drivers/usb/dwc3/trace.h | 40 ++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 38 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/usb/dwc3/trace.h b/drivers/usb/dwc3/trace.h
+index de81646..a489638 100644
+--- a/drivers/usb/dwc3/trace.h
++++ b/drivers/usb/dwc3/trace.h
+@@ -237,9 +237,45 @@ DECLARE_EVENT_CLASS(dwc3_log_trb,
+ 		__entry->size = trb->size;
+ 		__entry->ctrl = trb->ctrl;
+ 	),
+-	TP_printk("%s: trb %p bph %08x bpl %08x size %08x ctrl %08x",
++	TP_printk("%s: trb %p buf %08x%08x size %d ctrl %08x (%c%c%c%c:%c%c:%s)",
+ 		__get_str(name), __entry->trb, __entry->bph, __entry->bpl,
+-		__entry->size, __entry->ctrl
++		__entry->size, __entry->ctrl,
++		__entry->ctrl & DWC3_TRB_CTRL_HWO ? 'H' : 'h',
++		__entry->ctrl & DWC3_TRB_CTRL_LST ? 'L' : 'l',
++		__entry->ctrl & DWC3_TRB_CTRL_CHN ? 'C' : 'c',
++		__entry->ctrl & DWC3_TRB_CTRL_CSP ? 'S' : 's',
++		__entry->ctrl & DWC3_TRB_CTRL_ISP_IMI ? 'S' : 's',
++		__entry->ctrl & DWC3_TRB_CTRL_IOC ? 'C' : 'c',
++		({char *s;
++		switch (__entry->ctrl & 0x3f0) {
++		case DWC3_TRBCTL_NORMAL:
++			s = "normal";
++			break;
++		case DWC3_TRBCTL_CONTROL_SETUP:
++			s = "setup";
++			break;
++		case DWC3_TRBCTL_CONTROL_STATUS2:
++			s = "status2";
++			break;
++		case DWC3_TRBCTL_CONTROL_STATUS3:
++			s = "status3";
++			break;
++		case DWC3_TRBCTL_CONTROL_DATA:
++			s = "data";
++			break;
++		case DWC3_TRBCTL_ISOCHRONOUS_FIRST:
++			s = "isoc-first";
++			break;
++		case DWC3_TRBCTL_ISOCHRONOUS:
++			s = "isoc";
++			break;
++		case DWC3_TRBCTL_LINK_TRB:
++			s = "link";
++			break;
++		default:
++			s = "UNKNOWN";
++			break;
++		} s; })
+ 	)
+ );
+ 
+-- 
+1.9.1
+

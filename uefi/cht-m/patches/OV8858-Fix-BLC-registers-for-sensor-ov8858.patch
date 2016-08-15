@@ -1,0 +1,44 @@
+From 7bfb9930e285283e2101c7e988a28240befe4d83 Mon Sep 17 00:00:00 2001
+From: Ricardo Lopez Esparza <ricardo.lopez.esparza@intel.com>
+Date: Thu, 24 Mar 2016 23:37:03 -0600
+Subject: [PATCH 09/10] OV8858: Fix BLC registers for sensor ov8858
+
+The values of the BLC registers for CHT HR and CHT MRD are different.
+This patch adds the register values needed for MRD.
+
+Change-Id: I6e7889c9bd5eed9e454d45aa92ba68ddddaa4fdc
+Original-Tracked_On: https://jira01.devtools.intel.com/browse/OAM-24335
+Signed-off-by: Lopez Esparza, Ricardo <ricardo.lopez.esparza@intel.com>
+Reviewed-on: https://android.intel.com:443/476521
+Reviewed-on: https://icggerrit.ir.intel.com/110162
+Build: Dessert M BTNS (SC)
+Build: Dessert M CHT FFD (SC)
+Approver: Mikael Persson <mikael.persson@intel.com>
+Build: Dessert M BXT RVP (SC)
+Integrator: WeiX Meng <weix.meng@intel.com>
+Reviewed-by: WeiX Meng <weix.meng@intel.com>
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-26488
+Signed-off-by: Tao Wei <wei.tao@intel.com>
+Reviewed-on: https://android.intel.com:443/487155
+---
+ drivers/external_drivers/camera/drivers/media/i2c/ov8858.h | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/external_drivers/camera/drivers/media/i2c/ov8858.h b/drivers/external_drivers/camera/drivers/media/i2c/ov8858.h
+index 444a79bb..b35b1f6 100644
+--- a/drivers/external_drivers/camera/drivers/media/i2c/ov8858.h
++++ b/drivers/external_drivers/camera/drivers/media/i2c/ov8858.h
+@@ -1253,6 +1253,10 @@ static const struct ov8858_reg ov8858_1640x926[] = {
+ };
+ 
+ static const struct ov8858_reg ov8858_BLC_MRD[] = {
++	{OV8858_8BIT, 0x4022, 0x0C}, /* Anchor left start */
++	{OV8858_8BIT, 0x4023, 0x60}, /* Anchor left end */
++	{OV8858_8BIT, 0x4024, 0x0F}, /* Anchor right start */
++	{OV8858_8BIT, 0x4026, 0x0F}, /* Anchor right end */
+ 	{OV8858_8BIT, 0x402E, 0x04}, /* Bottom black line start = 12 */
+ 	{OV8858_8BIT, 0x402F, 0x08}, /* Bottom black line number = 2 */
+ 	{OV8858_TOK_TERM, 0, 0}
+-- 
+1.9.1
+

@@ -1,0 +1,38 @@
+From 89ee6bc24d2eea75255588dc8cfd01af3a11af08 Mon Sep 17 00:00:00 2001
+From: "Andre, Gerard" <gerard.andre@intel.com>
+Date: Thu, 7 Apr 2016 10:11:45 +0100
+Subject: [PATCH 35/41] Revert "Dollar Cove PMIC: add GPIO1 regulator."
+
+This patch breaks the SD card detection.
+
+This reverts commit bc806d8276afc32b22f8e3afe9cfd296356ef45f.
+This reverts patch https://android.intel.com/#/c/483000
+
+Change-Id: I5a5185762ac64945d3087c9f9368c2f6f3fc33a1
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-31683
+Reviewed-on: https://android.intel.com:443/491752
+Reviewed-on: https://android.intel.com:443/504774
+---
+ drivers/mfd/intel_soc_pmic_dc.c | 6 ------
+ 1 file changed, 6 deletions(-)
+
+diff --git a/drivers/mfd/intel_soc_pmic_dc.c b/drivers/mfd/intel_soc_pmic_dc.c
+index 2046fe2..25839e9 100644
+--- a/drivers/mfd/intel_soc_pmic_dc.c
++++ b/drivers/mfd/intel_soc_pmic_dc.c
+@@ -273,12 +273,6 @@ static struct mfd_cell dollar_cove_dev[] = {
+ 		.num_resources = 0,
+ 		.resources = NULL,
+ 	},
+-	{
+-		.name = "dcovex_regulator",
+-		.id = DCOVEX_ID_GPIO1 + 1,
+-		.num_resources = 0,
+-		.resources = NULL,
+-	},
+ 	{NULL, },
+ };
+ 
+-- 
+1.9.1
+

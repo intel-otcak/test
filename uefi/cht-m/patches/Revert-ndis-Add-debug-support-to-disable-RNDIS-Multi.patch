@@ -1,0 +1,49 @@
+From b8a85ffaeae71ff79c9becfdac9b7cd55b61bc09 Mon Sep 17 00:00:00 2001
+From: Janusz Dziedzic <januszx.dziedzic@intel.com>
+Date: Tue, 24 May 2016 13:28:42 +0200
+Subject: [PATCH 74/78] Revert "ndis: Add debug support to disable RNDIS
+ Multipacket Feature"
+
+This reverts commit 90f705e4b6521ca34c12d3e0ab26d958ccd78e8b.
+
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: Id649c795ffd5db8127467a5e7758912a55d8d9a8
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-19337
+Reviewed-on: https://android.intel.com:443/511199
+---
+ drivers/usb/gadget/f_rndis.c | 2 --
+ drivers/usb/gadget/u_ether.c | 4 ----
+ 2 files changed, 6 deletions(-)
+
+diff --git a/drivers/usb/gadget/f_rndis.c b/drivers/usb/gadget/f_rndis.c
+index 091a788..f3d6d80 100644
+--- a/drivers/usb/gadget/f_rndis.c
++++ b/drivers/usb/gadget/f_rndis.c
+@@ -480,8 +480,6 @@ static void rndis_command_complete(struct usb_ep *ep, struct usb_request *req)
+ 				__func__, buf->MaxTransferSize,
+ 				rndis->port.multi_pkt_xfer ? "enabled" :
+ 							    "disabled");
+-		if (rndis_multipacket_dl_disable)
+-			rndis->port.multi_pkt_xfer = 0;
+ 	}
+ //	spin_unlock(&dev->lock);
+ }
+diff --git a/drivers/usb/gadget/u_ether.c b/drivers/usb/gadget/u_ether.c
+index e0146b7..a9763d6 100644
+--- a/drivers/usb/gadget/u_ether.c
++++ b/drivers/usb/gadget/u_ether.c
+@@ -291,10 +291,6 @@ static void rx_complete(struct usb_ep *ep, struct usb_request *req)
+ 				status = dev->unwrap(dev->port_usb,
+ 							skb,
+ 							&dev->rx_frames);
+-				if (status == -EINVAL)
+-					dev->net->stats.rx_errors++;
+-				else if (status == -EOVERFLOW)
+-					dev->net->stats.rx_over_errors++;
+ 			} else {
+ 				dev_kfree_skb_any(skb);
+ 				status = -ENOTCONN;
+-- 
+1.9.1
+

@@ -1,0 +1,64 @@
+From d04ca810e2dad762a83a518c4aa40264a46561d0 Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <balbi@ti.com>
+Date: Thu, 10 Dec 2015 13:08:20 -0600
+Subject: [PATCH 44/78] usb: dwc3: gadget: pass a condition to dev_WARN_ONCE()
+
+instead of using:
+
+	if (condition) {
+		dev_WARN_ONCE(dev, true, "foo");
+		return -EINVAL;
+	}
+
+let's use:
+
+	if (dev_WARN_ONCE(dev, condition, "foo"))
+		return -EINVAL;
+
+Signed-off-by: Felipe Balbi <balbi@ti.com>
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I022a86ad4038cf9eca183b29bff01fb76f8cd3b5
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-19337
+Reviewed-on: https://android.intel.com:443/511169
+---
+ drivers/usb/dwc3/gadget.c | 14 ++++++--------
+ 1 file changed, 6 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index 2257a1e..f1f086b 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -661,11 +661,10 @@ static int dwc3_gadget_ep_enable(struct usb_ep *ep,
+ 	dep = to_dwc3_ep(ep);
+ 	dwc = dep->dwc;
+ 
+-	if (dep->flags & DWC3_EP_ENABLED) {
+-		dev_WARN_ONCE(dwc->dev, true, "%s is already enabled\n",
+-				dep->name);
++	if (dev_WARN_ONCE(dwc->dev, dep->flags & DWC3_EP_ENABLED,
++					"%s is already enabled\n",
++					dep->name))
+ 		return 0;
+-	}
+ 
+ 	spin_lock_irqsave(&dwc->lock, flags);
+ 	ret = __dwc3_gadget_ep_enable(dep, desc, ep->comp_desc, false);
+@@ -689,11 +688,10 @@ static int dwc3_gadget_ep_disable(struct usb_ep *ep)
+ 	dep = to_dwc3_ep(ep);
+ 	dwc = dep->dwc;
+ 
+-	if (!(dep->flags & DWC3_EP_ENABLED)) {
+-		dev_WARN_ONCE(dwc->dev, true, "%s is already disabled\n",
+-				dep->name);
++	if (dev_WARN_ONCE(dwc->dev, !(dep->flags & DWC3_EP_ENABLED),
++					"%s is already disabled\n",
++					dep->name))
+ 		return 0;
+-	}
+ 
+ 	spin_lock_irqsave(&dwc->lock, flags);
+ 	ret = __dwc3_gadget_ep_disable(dep);
+-- 
+1.9.1
+

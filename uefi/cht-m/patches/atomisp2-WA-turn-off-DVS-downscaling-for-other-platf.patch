@@ -1,0 +1,120 @@
+From 33a44f93cdd17cd5880b7b6144924eecead04c28 Mon Sep 17 00:00:00 2001
+From: Bin Han <bin.b.han@intel.com>
+Date: Mon, 29 Feb 2016 11:11:44 +0800
+Subject: [PATCH 2/3] atomisp2: [WA] turn off DVS downscaling for other
+ platforms
+
+DVS downscaling caused some regressions on CHT platforms
+which we did not really test it on before.
+
+As a workaround currently, I turned it off for them and if
+there is a changing request in the future on CHT for it,
+then need to re-enable it and test it out.
+
+Change-Id: I5016c756e8045b341f8612a10ddf83433114e323
+Original-Tracked_On: #H1504167283
+Signed-off-by: Bin Han <bin.b.han@intel.com>
+Reviewed-on: https://icggerrit.ir.intel.com/104678
+Build: Dessert M BXT RVP (SC)
+Reviewed-by: GuoqingX Zhang <guoqingx.zhang@intel.com>
+Reviewed-by: HaiqiangX Yao <haiqiangx.yao@intel.com>
+Build: Dessert M CHT FFD (SC)
+Approver: Tian Shu Qiu <tian.shu.qiu@intel.com>
+Validation-Android: Wei Tao <wei.tao@intel.com>
+Integrator: WeiX Meng <weix.meng@intel.com>
+Reviewed-by: WeiX Meng <weix.meng@intel.com>
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-22356
+Signed-off-by: Tao Wei <wei.tao@intel.com>
+Reviewed-on: https://android.intel.com:443/477515
+---
+ .../media/pci/atomisp2/atomisp_driver/atomisp_cmd.c  | 17 ++++++++++++++++-
+ .../pci/atomisp2/atomisp_driver/atomisp_subdev.c     | 20 ++++++++++++++++++++
+ 2 files changed, 36 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_cmd.c b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_cmd.c
+index 7d9a6be..267a44f 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_cmd.c
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_cmd.c
+@@ -2627,6 +2627,7 @@ int atomisp_get_dvs2_bq_resolutions(struct atomisp_sub_device *asd,
+ 		cropped_w = input_config->input_res.width - pad_width;
+ 		cropped_h = input_config->input_res.height - pad_height;
+ 
++#ifdef CONFIG_EXTERNAL_BTNS_CAMERA
+ 		/*
+ 		 * the GDC input resolution
+ 		 * If the cropped resolution (pad removed), then count
+@@ -2640,12 +2641,18 @@ int atomisp_get_dvs2_bq_resolutions(struct atomisp_sub_device *asd,
+ 		if (bq_res->source_bq.height_bq < bq_res->output_bq.height_bq)
+ 			bq_res->source_bq.height_bq =
+ 				bq_res->output_bq.height_bq;
+-
++#else
++		bq_res->source_bq.width_bq = bq_res->output_bq.width_bq +
++				pipe_cfg->dvs_envelope.width / 2;
++		bq_res->source_bq.height_bq = bq_res->output_bq.height_bq +
++				pipe_cfg->dvs_envelope.height / 2;
++#endif
+ 		/* spatial filter shift, always 4 pixels */
+ 		bq_res->gdc_shift_bq.width_bq = 4 / 2;
+ 		bq_res->gdc_shift_bq.height_bq = 4 / 2;
+ 
+ 		if (asd->params.video_dis_en) {
++#ifdef CONFIG_EXTERNAL_BTNS_CAMERA
+ 			unsigned int evlp_w, evlp_h;
+ 
+ 			evlp_w = min(pipe_cfg->dvs_envelope.width,
+@@ -2665,6 +2672,14 @@ int atomisp_get_dvs2_bq_resolutions(struct atomisp_sub_device *asd,
+ 				evlp_w / 2 - bq_res->ispfilter_bq.width_bq;
+ 			bq_res->envelope_bq.height_bq =
+ 				evlp_h / 2 - bq_res->ispfilter_bq.height_bq;
++#else
++			bq_res->envelope_bq.width_bq =
++				pipe_cfg->dvs_envelope.width / 2 -
++				bq_res->ispfilter_bq.width_bq;
++			bq_res->envelope_bq.height_bq =
++				pipe_cfg->dvs_envelope.height / 2 -
++				bq_res->ispfilter_bq.height_bq;
++#endif
+ 		}
+ 	} else {
+ 		unsigned int w_padding;
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_subdev.c b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_subdev.c
+index 2594493..64d1fa3 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_subdev.c
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_subdev.c
+@@ -430,12 +430,32 @@ int atomisp_subdev_set_selection(struct v4l2_subdev *sd,
+ 
+ 		if (isp_sd->run_mode->val == ATOMISP_RUN_MODE_VIDEO &&
+ 			!isp_sd->continuous_mode->val) {
++#ifdef CONFIG_EXTERNAL_BTNS_CAMERA
+ 			dvs_w = rounddown(crop[pad]->width - r->width,
+ 				ATOM_ISP_STEP_WIDTH);
+ 			dvs_h = rounddown(crop[pad]->height - r->height,
+ 				ATOM_ISP_STEP_HEIGHT);
+ 			crop[pad]->width = r->width;
+ 			crop[pad]->height = r->height;
++#else
++			if (isp_sd->params.video_dis_en) {
++				/* This resolution contains 20 % of DVS slack
++				 * (of the desired captured image before
++				 * scaling, or 1 / 6 of what we get from the
++				 * sensor) in both width and height. Remove
++				 * it. */
++				crop[pad]->width = roundup(crop[pad]->width *
++							5 / 6,
++						ATOM_ISP_STEP_WIDTH);
++				crop[pad]->height = roundup(crop[pad]->height *
++							5 / 6,
++						ATOM_ISP_STEP_HEIGHT);
++				dvs_w = rounddown(crop[pad]->width / 5,
++					  ATOM_ISP_STEP_WIDTH);
++				dvs_h = rounddown(crop[pad]->height / 5,
++					  ATOM_ISP_STEP_HEIGHT);
++			}
++#endif
+ 		}
+ 
+ 		crop[pad]->width = min(crop[pad]->width, r->width);
+-- 
+1.9.1
+

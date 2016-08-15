@@ -1,0 +1,81 @@
+From 26f8d52a7347f61f724de76aa02edf6a3f0199d1 Mon Sep 17 00:00:00 2001
+From: "R, Kannappan" <r.kannappan@intel.com>
+Date: Mon, 8 Feb 2016 15:59:04 +0530
+Subject: [PATCH 6/6] usbc_pd: support bist mode in dpm and policy engine.
+
+In bist mode tester will send huge bist data packets and
+expects crc from device, no processing required by pe.
+When bist mode is entered, pe sets the bist mode to phy
+and disables on hard reset.
+
+Change-Id: Iad2e8755445d5215246372f883c2188d903db01c
+Signed-off-by: R, Kannappan <r.kannappan@intel.com>
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-19328
+Reviewed-on: https://android.intel.com:443/467326
+---
+ drivers/usb/typec/pd/devpolicy_mgr.h |  8 ++++++++
+ drivers/usb/typec/pd/policy_engine.c | 15 ++++++++++++++-
+ 2 files changed, 22 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/usb/typec/pd/devpolicy_mgr.h b/drivers/usb/typec/pd/devpolicy_mgr.h
+index ee2efbc..6590569 100644
+--- a/drivers/usb/typec/pd/devpolicy_mgr.h
++++ b/drivers/usb/typec/pd/devpolicy_mgr.h
+@@ -374,6 +374,14 @@ static inline int devpolicy_set_bist_cm2(struct devpolicy_mgr *dpm, bool en)
+ 
+ 	return -EINVAL;
+ }
++static inline int devpolicy_set_bist_test_data_mode(struct devpolicy_mgr *dpm,
++							bool en)
++{
++	if (dpm && dpm->phy)
++		return typec_set_bist_test_data_mode(dpm->phy, en);
++
++	return -EINVAL;
++}
+ 
+ static inline void devpolicy_update_data_role(struct devpolicy_mgr *dpm,
+ 					enum data_role role)
+diff --git a/drivers/usb/typec/pd/policy_engine.c b/drivers/usb/typec/pd/policy_engine.c
+index 4bad3d8..957c14f 100644
+--- a/drivers/usb/typec/pd/policy_engine.c
++++ b/drivers/usb/typec/pd/policy_engine.c
+@@ -78,6 +78,9 @@ static void pe_enable_pd(struct policy_engine *pe, bool en)
+ 
+ static void pe_do_pe_reset(struct policy_engine *pe)
+ {
++	/* come out of the bist test data mode during the reset */
++	devpolicy_set_bist_test_data_mode(pe->p.dpm, false);
++
+ 	/*
+ 	 * Cancel pending state works. Donot use sync as this
+ 	 * reset itself might be runnig in the worker.
+@@ -214,6 +217,17 @@ static void pe_handle_bist_msg(struct policy_engine *pe, u32 *data, u8 num_bdos)
+ 		btype = bdo[i].type;
+ 
+ 		switch (btype) {
++		case BIST_TEST_DATA:
++			/*
++			 * in test mode when receiving BIST TEST DATA
++			 * packets can be ignored and shall not pass
++			 * to the framework as tester will send 1000's
++			 * of BIST TEST DATA.
++			 * TEST mode will be cleared by hard reset
++			 * from the tester
++			 */
++			devpolicy_set_bist_test_data_mode(pe->p.dpm, true);
++			return;
+ 		case BIST_CARRIER_MODE2:
+ 			pe_change_state(pe, PE_BIST_CARRIER_MODE_2);
+ 			/*
+@@ -228,7 +242,6 @@ static void pe_handle_bist_msg(struct policy_engine *pe, u32 *data, u8 num_bdos)
+ 		case BIST_CARRIER_MODE1:
+ 		case BIST_CARRIER_MODE3:
+ 		case BIST_EYE_PATTERN:
+-		case BIST_TEST_DATA:
+ 		default:
+ 			log_info("BDO[%d] Type - %d not supported!\n",
+ 					i, btype);
+-- 
+1.9.1
+

@@ -1,0 +1,39 @@
+From feb0a02b29fa5b894f21eb2d52b3958af5a64ae8 Mon Sep 17 00:00:00 2001
+From: John Youn <johnyoun@synopsys.com>
+Date: Mon, 23 May 2016 11:32:40 -0700
+Subject: [PATCH 23/41] usb: dwc3: ep0: Use the correct type for SET_SEL data
+
+u2sel and u2pel should be __le16. Doesn't fix any issue.
+
+Found with sparse.
+
+Signed-off-by: John Youn <johnyoun@synopsys.com>
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit 501058edebf957a3c101c8119c3286e496873840)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: Ic05985081b9aba241bc53f0c855a6b367b6dd240
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34814
+Reviewed-on: https://android.intel.com:443/519793
+---
+ drivers/usb/dwc3/ep0.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/usb/dwc3/ep0.c b/drivers/usb/dwc3/ep0.c
+index 1ecfac7..70a5f5f 100644
+--- a/drivers/usb/dwc3/ep0.c
++++ b/drivers/usb/dwc3/ep0.c
+@@ -612,8 +612,8 @@ static void dwc3_ep0_set_sel_cmpl(struct usb_ep *ep, struct usb_request *req)
+ 	struct timing {
+ 		u8	u1sel;
+ 		u8	u1pel;
+-		u16	u2sel;
+-		u16	u2pel;
++		__le16	u2sel;
++		__le16	u2pel;
+ 	} __packed timing;
+ 
+ 	int		ret;
+-- 
+1.9.1
+

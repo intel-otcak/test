@@ -1,0 +1,35 @@
+From 0a7dd4d828c47089350ae85260da92e11573e5ce Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <felipe.balbi@linux.intel.com>
+Date: Mon, 30 May 2016 13:42:33 +0300
+Subject: [PATCH 36/41] usb: dwc3: gadget: decrement trbs_left for each sg
+ entry
+
+If we don't, we will overwrite valid TRBs.
+
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit d6dc2e76a860d6be0129daae43e5f12461531d20)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I9a72c5d01e15fd2c3678ad5ad3e780aea23b978c
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34814
+Reviewed-on: https://android.intel.com:443/519806
+---
+ drivers/usb/dwc3/gadget.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index fabd05a..51317da 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -1001,7 +1001,7 @@ static void dwc3_prepare_one_trb_sg(struct dwc3_ep *dep,
+ 			chain = false;
+ 		}
+ 
+-		if (!trbs_left)
++		if (!trbs_left--)
+ 			last = true;
+ 
+ 		if (last)
+-- 
+1.9.1
+

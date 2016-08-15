@@ -1,0 +1,45 @@
+From 40c473a962208f004680b7e5b6420d64fad9ff72 Mon Sep 17 00:00:00 2001
+From: arun <arun.radhakrishnan@intel.com>
+Date: Wed, 30 Mar 2016 12:50:29 -0600
+Subject: [PATCH 3/4] iio: ak0911: Read ST2 register after each data read
+ operation
+
+It was observed that the read operation returned the same values over
+and over again, datasheet recommends reading ST2 register after each
+data read operation, to re-trigger the sensor mesurement cycle.
+This change helped fix the issue.
+
+Change-Id: I4de166ce7025f8601bf60c023383909fe6e709ee
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-29444
+Signed-off-by: Arun Radhakrishnan <arun.radhakrishnan@intel.com>
+Reviewed-on: https://android.intel.com:443/488364
+Reviewed-on: https://android.intel.com:443/496232
+---
+ drivers/iio/magnetometer/ak09911.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/iio/magnetometer/ak09911.c b/drivers/iio/magnetometer/ak09911.c
+index 68b22e3..b8417e2 100644
+--- a/drivers/iio/magnetometer/ak09911.c
++++ b/drivers/iio/magnetometer/ak09911.c
+@@ -234,11 +234,13 @@ static int ak09911_read_axis(struct iio_dev *indio_dev, int index, int *val)
+ 	meas_reg = ret;
+ 
+ 	/* datasheet recommends reading ST2 register after each
+-	 * data read operation */
++	 * data read operation, read ST2 when we reach index z */
++	 if(index == 2) {
+ 	ret = i2c_smbus_read_byte_data(client, AK09911_REG_ST2);
+-	if (ret < 0) {
+-		dev_err(&client->dev, "Read AK09911_REG_ST2 reg fails\n");
+-		goto fn_exit;
++		if (ret < 0) {
++			dev_err(&client->dev, "Read AK09911_REG_ST2 reg fails\n");
++			goto fn_exit;
++		}
+ 	}
+ 	mutex_unlock(&data->lock);
+ 
+-- 
+1.9.1
+

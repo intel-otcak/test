@@ -1,0 +1,92 @@
+From c04d5169f9291e2a8e6f9e564cd694a1af2c6032 Mon Sep 17 00:00:00 2001
+From: Denny Yang <dennydongsung.yang@intel.com>
+Date: Wed, 13 Jul 2016 18:45:42 -0700
+Subject: [PATCH] mm: x86_64: ensure get_unmapped_area() returns higher address
+ than mmap_min_addr
+
+commit 2afc745f3e3079ab16c826be4860da2529054dd2 upstream needs to be applied
+as it's replaced by sys_x86_64.c
+
+This patch fixes the problem that get_unmapped_area() can return illegal
+address and result in failing mmap(2) etc.
+
+In case that the address higher than PAGE_SIZE is set to
+/proc/sys/vm/mmap_min_addr, the address lower than mmap_min_addr can be
+returned by get_unmapped_area(), even if you do not pass any virtual
+address hint (i.e.  the second argument).
+
+This is because the current get_unmapped_area() code does not take into
+account mmap_min_addr.
+
+This leads to two actual problems as follows:
+
+1. mmap(2) can fail with EPERM on the process without CAP_SYS_RAWIO,
+   although any illegal parameter is not passed.
+
+2. The bottom-up search path after the top-down search might not work in
+   arch_get_unmapped_area_topdown().
+
+Change-Id: Idcc088677d0d5b914cc0de68d930b58c9f945083
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-35722
+Reviewed-on: https://android.intel.com:443/523568
+---
+ arch/x86/kernel/sys_x86_64.c | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
+
+diff --git a/arch/x86/kernel/sys_x86_64.c b/arch/x86/kernel/sys_x86_64.c
+index 30277e2..e1aea7d 100644
+--- a/arch/x86/kernel/sys_x86_64.c
++++ b/arch/x86/kernel/sys_x86_64.c
+@@ -15,6 +15,7 @@
+ #include <linux/random.h>
+ #include <linux/uaccess.h>
+ #include <linux/elf.h>
++#include <linux/security.h>
+ 
+ #include <asm/ia32.h>
+ #include <asm/syscalls.h>
+@@ -120,13 +121,13 @@ arch_get_unmapped_area(struct file *filp, unsigned long addr,
+ 
+ 	find_start_end(flags, &begin, &end);
+ 
+-	if (len > end)
++	if (len > end - mmap_min_addr)
+ 		return -ENOMEM;
+ 
+ 	if (addr) {
+ 		addr = PAGE_ALIGN(addr);
+ 		vma = find_vma(mm, addr);
+-		if (end - len >= addr &&
++		if (end - len >= addr && addr >= mmap_min_addr &&
+ 		    (!vma || addr + len <= vma->vm_start))
+ 			return addr;
+ 	}
+@@ -151,7 +152,7 @@ arch_get_unmapped_area_topdown(struct file *filp, const unsigned long addr0,
+ 	struct vm_unmapped_area_info info;
+ 
+ 	/* requested length too big for entire address space */
+-	if (len > TASK_SIZE)
++	if (len > TASK_SIZE - mmap_min_addr)
+ 		return -ENOMEM;
+ 
+ 	if (flags & MAP_FIXED)
+@@ -165,14 +166,14 @@ arch_get_unmapped_area_topdown(struct file *filp, const unsigned long addr0,
+ 	if (addr) {
+ 		addr = PAGE_ALIGN(addr);
+ 		vma = find_vma(mm, addr);
+-		if (TASK_SIZE - len >= addr &&
++		if (TASK_SIZE - len >= addr && addr >= mmap_min_addr &&
+ 				(!vma || addr + len <= vma->vm_start))
+ 			return addr;
+ 	}
+ 
+ 	info.flags = VM_UNMAPPED_AREA_TOPDOWN;
+ 	info.length = len;
+-	info.low_limit = PAGE_SIZE;
++	info.low_limit = max(PAGE_SIZE, mmap_min_addr);
+ 	info.high_limit = mm->mmap_base;
+ 	info.align_mask = filp ? get_align_mask() : 0;
+ 	info.align_offset = pgoff << PAGE_SHIFT;
+-- 
+1.9.1
+

@@ -1,0 +1,174 @@
+From b92669f94227471a2cfb36c31adbce1aafd77f94 Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <felipe.balbi@linux.intel.com>
+Date: Fri, 13 May 2016 12:42:44 +0300
+Subject: [PATCH 04/41] usb: dwc3: gadget: split __dwc3_gadget_kick_transfer()
+
+To aid code readability, we're gonna split
+__dwc3_gadget_kick_transfer() into its constituent
+parts: scatter gather and linear buffers.
+
+That way, it's easier to follow the code and focus
+debug effort when one or the other fails.
+
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit 5ee85d890f8de5c6f1ab22ba13734a63fdf3ff2d)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I5fa5e873ad0138a52a37cae9a3317aa0550377cf
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34814
+Reviewed-on: https://android.intel.com:443/519774
+---
+ drivers/usb/dwc3/gadget.c | 122 ++++++++++++++++++++++++----------------------
+ 1 file changed, 65 insertions(+), 57 deletions(-)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index 34174a5..76e1032 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -913,6 +913,65 @@ static u32 dwc3_calc_trbs_left(struct dwc3_ep *dep)
+ 	return trbs_left;
+ }
+ 
++static void dwc3_prepare_one_trb_sg(struct dwc3_ep *dep,
++		struct dwc3_request *req, unsigned int trbs_left)
++{
++	struct usb_request *request = &req->request;
++	struct scatterlist *sg = request->sg;
++	struct scatterlist *s;
++	unsigned int	last = false;
++	unsigned int	length;
++	dma_addr_t	dma;
++	int		i;
++
++	for_each_sg(sg, s, request->num_mapped_sgs, i) {
++		unsigned chain = true;
++
++		length = sg_dma_len(s);
++		dma = sg_dma_address(s);
++
++		if (sg_is_last(s)) {
++			if (list_is_last(&req->list, &dep->pending_list))
++				last = true;
++
++			chain = false;
++		}
++
++		if (!trbs_left)
++			last = true;
++
++		if (last)
++			chain = false;
++
++		dwc3_prepare_one_trb(dep, req, dma, length,
++				last, chain, i);
++
++		if (last)
++			break;
++	}
++}
++
++static void dwc3_prepare_one_trb_linear(struct dwc3_ep *dep,
++		struct dwc3_request *req, unsigned int trbs_left)
++{
++	unsigned int	last = false;
++	unsigned int	length;
++	dma_addr_t	dma;
++
++	dma = req->request.dma;
++	length = req->request.length;
++
++	if (!trbs_left)
++		last = true;
++
++	/* Is this the last request? */
++	if (list_is_last(&req->list, &dep->pending_list))
++		last = true;
++
++	dwc3_prepare_one_trb(dep, req, dma, length,
++			last, false, 0);
++}
++
+ /*
+  * dwc3_prepare_trbs - setup TRBs from requests
+  * @dep: endpoint for which requests are being prepared
+@@ -925,7 +984,6 @@ static void dwc3_prepare_trbs(struct dwc3_ep *dep)
+ {
+ 	struct dwc3_request	*req, *n;
+ 	u32			trbs_left;
+-	unsigned int		last_one = 0;
+ 
+ 	BUILD_BUG_ON_NOT_POWER_OF_2(DWC3_TRB_NUM);
+ 
+@@ -934,63 +992,13 @@ static void dwc3_prepare_trbs(struct dwc3_ep *dep)
+ 		return;
+ 
+ 	list_for_each_entry_safe(req, n, &dep->pending_list, list) {
+-		unsigned	length;
+-		dma_addr_t	dma;
+-		last_one = false;
+-
+-		if (req->request.num_mapped_sgs > 0) {
+-			struct usb_request *request = &req->request;
+-			struct scatterlist *sg = request->sg;
+-			struct scatterlist *s;
+-			int		i;
+-
+-			for_each_sg(sg, s, request->num_mapped_sgs, i) {
+-				unsigned chain = true;
+-
+-				length = sg_dma_len(s);
+-				dma = sg_dma_address(s);
+-
+-				if (sg_is_last(s)) {
+-					if (list_is_last(&req->list, &dep->pending_list))
+-						last_one = true;
+-
+-					chain = false;
+-				}
+-
+-				trbs_left--;
+-				if (!trbs_left)
+-					last_one = true;
+-
+-				if (last_one)
+-					chain = false;
+-
+-				dwc3_prepare_one_trb(dep, req, dma, length,
+-						last_one, chain, i);
+-
+-				if (last_one)
+-					break;
+-			}
+-
+-			if (last_one)
+-				break;
+-		} else {
+-			dma = req->request.dma;
+-			length = req->request.length;
+-			trbs_left--;
+-
+-			if (!trbs_left)
+-				last_one = true;
+-
+-			/* Is this the last request? */
+-			if (list_is_last(&req->list, &dep->pending_list))
+-				last_one = true;
+-
+-			dwc3_prepare_one_trb(dep, req, dma, length,
+-					last_one, false, 0);
++		if (req->request.num_mapped_sgs > 0)
++			dwc3_prepare_one_trb_sg(dep, req, trbs_left--);
++		else
++			dwc3_prepare_one_trb_linear(dep, req, trbs_left--);
+ 
+-			if (last_one)
+-				break;
+-		}
++		if (!trbs_left)
++			return;
+ 	}
+ }
+ 
+-- 
+1.9.1
+

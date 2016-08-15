@@ -1,0 +1,54 @@
+From 4b1e84a62f43db6c658ca31a425e5496b04858a7 Mon Sep 17 00:00:00 2001
+From: Will Deacon <will.deacon@arm.com>
+Date: Fri, 11 Sep 2015 15:31:24 +0100
+Subject: [PATCH 712/769] UPSTREAM: arm64: cpu hotplug: ensure we mask out
+ CPU_TASKS_FROZEN in notifiers
+
+(cherry picked from commit e56d82a116176f7af9d642b560abbbd3a2b68013)
+
+We have a couple of CPU hotplug notifiers for resetting the CPU debug
+state to a sane value when a CPU comes online.
+
+This patch ensures that we mask out CPU_TASKS_FROZEN so that we don't
+miss any online events occuring due to suspend/resume.
+
+Acked-by: Lorenzo Pieralisi <lorenzo.pieralisi@arm.com>
+Signed-off-by: Will Deacon <will.deacon@arm.com>
+
+Signed-off-by: Pavel Labath <labath@google.com>
+Bug: 27189927
+Change-Id: I72549149b9bf1f0d05cb17a1db98f9a342c580c0
+---
+ arch/arm64/kernel/debug-monitors.c | 2 +-
+ arch/arm64/kernel/hw_breakpoint.c  | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm64/kernel/debug-monitors.c b/arch/arm64/kernel/debug-monitors.c
+index 636ba8b..9b54201 100644
+--- a/arch/arm64/kernel/debug-monitors.c
++++ b/arch/arm64/kernel/debug-monitors.c
+@@ -144,7 +144,7 @@ static int os_lock_notify(struct notifier_block *self,
+ 				    unsigned long action, void *data)
+ {
+ 	int cpu = (unsigned long)data;
+-	if (action == CPU_ONLINE)
++	if ((action & ~CPU_TASKS_FROZEN) == CPU_ONLINE)
+ 		smp_call_function_single(cpu, clear_os_lock, NULL, 1);
+ 	return NOTIFY_OK;
+ }
+diff --git a/arch/arm64/kernel/hw_breakpoint.c b/arch/arm64/kernel/hw_breakpoint.c
+index a45e2db..f6013ac 100644
+--- a/arch/arm64/kernel/hw_breakpoint.c
++++ b/arch/arm64/kernel/hw_breakpoint.c
+@@ -885,7 +885,7 @@ static int hw_breakpoint_reset_notify(struct notifier_block *self,
+ 						void *hcpu)
+ {
+ 	int cpu = (long)hcpu;
+-	if (action == CPU_ONLINE)
++	if ((action & ~CPU_TASKS_FROZEN) == CPU_ONLINE)
+ 		smp_call_function_single(cpu, hw_breakpoint_reset, NULL, 1);
+ 	return NOTIFY_OK;
+ }
+-- 
+1.9.1
+

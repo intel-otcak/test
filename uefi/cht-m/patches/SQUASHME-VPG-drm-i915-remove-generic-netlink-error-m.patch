@@ -1,0 +1,41 @@
+From 68f660edd12489a77d98dd9b29c2275967a82dd3 Mon Sep 17 00:00:00 2001
+From: Tim Gore <tim.gore@intel.com>
+Date: Mon, 21 Mar 2016 13:57:16 +0000
+Subject: [PATCH] SQUASHME! [VPG]: drm/i915: remove generic netlink error msg
+
+SQUASHME! - This patch should be squashed into the following existing patch:
+
+        Author: Tim Gore <tim.gore@intel.com>
+        Date:   Mon Dec 14 15:46:27 2015 +0000
+        Change-Id: I864956b900c65bd620e146bea50c844594bc170a
+        MUST_REBASE [VPG]: drm/i915: add generic netlink msg gpu resets
+
+This patch removes an error message that was just complaining about
+the fact that the generic netlink message had no listeners. This was
+causing IGT regressions on tests that invoke GPU hangs.
+
+Change-Id: Ib8ae692cdcf57c4e2980772f29d134c16fa101a5
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-31923
+Signed-off-by: Tim Gore <tim.gore@intel.com>
+(cherry picked from commit 3d31f409823bd1762935e6499664e3d6d8d7e93b)
+Reviewed-on: https://android.intel.com:443/504680
+---
+ drivers/gpu/drm/i915/intel_uncore.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/i915/intel_uncore.c b/drivers/gpu/drm/i915/intel_uncore.c
+index df563c6..0f95943 100644
+--- a/drivers/gpu/drm/i915/intel_uncore.c
++++ b/drivers/gpu/drm/i915/intel_uncore.c
+@@ -1569,7 +1569,7 @@ static void intel_uncore_reset_notification(void)
+ 	 * mcgrp_offset for our generic netlink family. Our netlink portid is always 0
+ 	 */
+ 	rc = genlmsg_multicast(&i915_gpu_rst_genl_family, skb, 0, mc_group, GFP_KERNEL);
+-	if (rc != 0) {
++	if ((rc != 0) && (rc != -ESRCH)) {
+ 		DRM_ERROR("failed to multicast netlink message, rc=%d\n", rc);
+ 		return;
+ 	}
+-- 
+1.9.1
+

@@ -1,0 +1,96 @@
+From 7931e549634d682d74be9d285639500e2ad0e7af Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <balbi@ti.com>
+Date: Mon, 20 Jul 2015 14:48:13 -0500
+Subject: [PATCH 25/78] usb: dwc3: gadget: defer endpoint name change
+
+We should only change endpoint names when we
+actually manage to enable/disable it.
+
+Signed-off-by: Felipe Balbi <balbi@ti.com>
+(cherry picked from commit aa7399744dd02537523b7bf9e3070600b6f79751)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I72518f35887fa02e3e92f051fde7e001c9eefdea
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-19337
+Reviewed-on: https://android.intel.com:443/511150
+---
+ drivers/usb/dwc3/gadget.c | 42 +++++++++++++++++++++---------------------
+ 1 file changed, 21 insertions(+), 21 deletions(-)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index 74783b31..5607265376 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -544,6 +544,23 @@ static int __dwc3_gadget_ep_enable(struct dwc3_ep *dep,
+ 		trb_link->ctrl |= DWC3_TRB_CTRL_HWO;
+ 	}
+ 
++	switch (usb_endpoint_type(desc)) {
++	case USB_ENDPOINT_XFER_CONTROL:
++		strlcat(dep->name, "-control", sizeof(dep->name));
++		break;
++	case USB_ENDPOINT_XFER_ISOC:
++		strlcat(dep->name, "-isoc", sizeof(dep->name));
++		break;
++	case USB_ENDPOINT_XFER_BULK:
++		strlcat(dep->name, "-bulk", sizeof(dep->name));
++		break;
++	case USB_ENDPOINT_XFER_INT:
++		strlcat(dep->name, "-int", sizeof(dep->name));
++		break;
++	default:
++		dev_err(dwc->dev, "invalid endpoint transfer type\n");
++	}
++
+ 	return 0;
+ }
+ 
+@@ -601,6 +618,10 @@ static int __dwc3_gadget_ep_disable(struct dwc3_ep *dep)
+ 	dep->type = 0;
+ 	dep->flags = 0;
+ 
++	snprintf(dep->name, sizeof(dep->name), "ep%d%s",
++			dep->number >> 1,
++			(dep->number & 1) ? "in" : "out");
++
+ 	return 0;
+ }
+ 
+@@ -646,23 +667,6 @@ static int dwc3_gadget_ep_enable(struct usb_ep *ep,
+ 		return 0;
+ 	}
+ 
+-	switch (usb_endpoint_type(desc)) {
+-	case USB_ENDPOINT_XFER_CONTROL:
+-		strlcat(dep->name, "-control", sizeof(dep->name));
+-		break;
+-	case USB_ENDPOINT_XFER_ISOC:
+-		strlcat(dep->name, "-isoc", sizeof(dep->name));
+-		break;
+-	case USB_ENDPOINT_XFER_BULK:
+-		strlcat(dep->name, "-bulk", sizeof(dep->name));
+-		break;
+-	case USB_ENDPOINT_XFER_INT:
+-		strlcat(dep->name, "-int", sizeof(dep->name));
+-		break;
+-	default:
+-		dev_err(dwc->dev, "invalid endpoint transfer type\n");
+-	}
+-
+ 	spin_lock_irqsave(&dwc->lock, flags);
+ 	ret = __dwc3_gadget_ep_enable(dep, desc, ep->comp_desc, false);
+ 	spin_unlock_irqrestore(&dwc->lock, flags);
+@@ -691,10 +695,6 @@ static int dwc3_gadget_ep_disable(struct usb_ep *ep)
+ 		return 0;
+ 	}
+ 
+-	snprintf(dep->name, sizeof(dep->name), "ep%d%s",
+-			dep->number >> 1,
+-			(dep->number & 1) ? "in" : "out");
+-
+ 	spin_lock_irqsave(&dwc->lock, flags);
+ 	ret = __dwc3_gadget_ep_disable(dep);
+ 	spin_unlock_irqrestore(&dwc->lock, flags);
+-- 
+1.9.1
+

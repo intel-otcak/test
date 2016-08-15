@@ -1,0 +1,54 @@
+From 11d7e351bd545163c5fc84850257a714a9af98a7 Mon Sep 17 00:00:00 2001
+From: William Wu <william.wu@rock-chips.com>
+Date: Fri, 13 May 2016 18:13:46 +0800
+Subject: [PATCH 26/41] usb: dwc3: add DWC3_GUCTL1 reg for debug
+
+GUCTL1 reg has some useful functions which can be
+written by user. For rockchip platform, we set
+GUCTL1.DEV_FORCE_20_CLK_FOR_30_CLK (bit26, applicable
+for the core is programmed to operate in 2.0 device
+only) to 1 in bootrom, and after start the kernel,
+we want to check whether this bit can be reset to
+default 0 after the core reset. Dump GUCTL1 reg from
+debugfs is more convenient for us.
+
+Signed-off-by: William Wu <william.wu@rock-chips.com>
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit 475c8beb35e129c2f33182f476373db04008892e)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: Ib6a40bae86eefd2f2bdaf876db753cbfd26525a7
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34814
+Reviewed-on: https://android.intel.com:443/519796
+---
+ drivers/usb/dwc3/core.h    | 1 +
+ drivers/usb/dwc3/debugfs.c | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/drivers/usb/dwc3/core.h b/drivers/usb/dwc3/core.h
+index 55e8f5e..d923508 100644
+--- a/drivers/usb/dwc3/core.h
++++ b/drivers/usb/dwc3/core.h
+@@ -85,6 +85,7 @@
+ #define DWC3_GCTL		0xc110
+ #define DWC3_GEVTEN		0xc114
+ #define DWC3_GSTS		0xc118
++#define DWC3_GUCTL1		0xc11c
+ #define DWC3_GSNPSID		0xc120
+ #define DWC3_GGPIO		0xc124
+ #define DWC3_GUID		0xc128
+diff --git a/drivers/usb/dwc3/debugfs.c b/drivers/usb/dwc3/debugfs.c
+index c8f6f0e..8ea3578 100644
+--- a/drivers/usb/dwc3/debugfs.c
++++ b/drivers/usb/dwc3/debugfs.c
+@@ -70,6 +70,7 @@ static const struct debugfs_reg32 dwc3_regs[] = {
+ 	dump_register(GCTL),
+ 	dump_register(GEVTEN),
+ 	dump_register(GSTS),
++	dump_register(GUCTL1),
+ 	dump_register(GSNPSID),
+ 	dump_register(GGPIO),
+ 	dump_register(GUID),
+-- 
+1.9.1
+

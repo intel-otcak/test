@@ -1,0 +1,33 @@
+From 62625110be54ba5fa78d84ab996e67ee6ddf398f Mon Sep 17 00:00:00 2001
+From: Sami Tolvanen <samitolvanen@google.com>
+Date: Fri, 3 Jun 2016 14:22:46 -0700
+Subject: [PATCH 770/770] ANDROID: dm verity fec: add missing release from
+ fec_ktype
+
+Add a release function to allow destroying the dm-verity device.
+
+Bug: 27928374
+Signed-off-by: Sami Tolvanen <samitolvanen@google.com>
+Change-Id: Ic0f7c17e4889c5580d70b52d9a709a37165a5747
+(cherry picked from commit 0039ccf47c8f99888f7b71b2a36a68a027fbe357)
+---
+ drivers/md/dm-verity-fec.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/md/dm-verity-fec.c b/drivers/md/dm-verity-fec.c
+index d35b0b1..96e5ca4 100644
+--- a/drivers/md/dm-verity-fec.c
++++ b/drivers/md/dm-verity-fec.c
+@@ -694,7 +694,8 @@ static struct attribute *fec_attrs[] = {
+ 
+ static struct kobj_type fec_ktype = {
+ 	.sysfs_ops = &kobj_sysfs_ops,
+-	.default_attrs = fec_attrs
++	.default_attrs = fec_attrs,
++	.release = dm_kobject_release
+ };
+ 
+ /*
+-- 
+1.9.1
+

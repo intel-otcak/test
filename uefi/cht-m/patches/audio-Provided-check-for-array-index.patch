@@ -1,0 +1,29 @@
+From d0ec0d825ccb4efed30d725b6b0f804c6c60592b Mon Sep 17 00:00:00 2001
+From: thakur2x <santosh.krx.thakur@intel.com>
+Date: Wed, 13 Jul 2016 17:32:12 +0530
+Subject: [PATCH 3/3] [audio] Provided check for array index
+
+Change-Id: I8b979f6cc24db5a7f57b94b58992e2e7cf04348b
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-35504
+Signed-off-by: thakur2x <santosh.krx.thakur@intel.com>
+Reviewed-on: https://android.intel.com:443/523085
+---
+ sound/soc/codecs/rt5670_ioctl.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/sound/soc/codecs/rt5670_ioctl.c b/sound/soc/codecs/rt5670_ioctl.c
+index 6663a21..01d9039 100644
+--- a/sound/soc/codecs/rt5670_ioctl.c
++++ b/sound/soc/codecs/rt5670_ioctl.c
+@@ -105,7 +105,7 @@ int rt5670_ioctl_common(struct snd_hwdep *hw, struct file *file,
+ 
+ 	switch (cmd) {
+ 	case RT_SET_CODEC_HWEQ_IOCTL:
+-		if (eq_mode[*buf] == *(buf + 1))
++		if ((* buf > EQ_CH_NUM) && (eq_mode[*buf] == *(buf + 1)))
+ 			break;
+ 		eq_mode[*buf] = *(buf + 1);
+ 		rt5670_update_eqmode(codec, eq_mode[*buf], *buf);
+-- 
+1.9.1
+

@@ -1,0 +1,86 @@
+From 8ab558fc1017f5d7e65b89e11f3bc790c35254ed Mon Sep 17 00:00:00 2001
+From: Janis Danisevskis <jdanis@google.com>
+Date: Thu, 14 Apr 2016 13:57:03 +0100
+Subject: [PATCH 762/769] UPSTREAM: procfs: fixes pthread cross-thread naming
+ if !PR_DUMPABLE
+
+The PR_DUMPABLE flag causes the pid related paths of the
+proc file system to be owned by ROOT. The implementation
+of pthread_set/getname_np however needs access to
+/proc/<pid>/task/<tid>/comm.
+If PR_DUMPABLE is false this implementation is locked out.
+
+This patch installs a special permission function for
+the file "comm" that grants read and write access to
+all threads of the same group regardless of the ownership
+of the inode. For all other threads the function falls back
+to the generic inode permission check.
+
+Signed-off-by: Janis Danisevskis <jdanis@google.com>
+---
+ fs/proc/base.c | 42 +++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 41 insertions(+), 1 deletion(-)
+
+diff --git a/fs/proc/base.c b/fs/proc/base.c
+index e7e9c39..69148f1 100644
+--- a/fs/proc/base.c
++++ b/fs/proc/base.c
+@@ -2918,6 +2918,44 @@ int proc_pid_readdir(struct file *file, struct dir_context *ctx)
+ }
+ 
+ /*
++ * proc_tid_comm_permission is a special permission function exclusively
++ * used for the node /proc/<pid>/task/<tid>/comm.
++ * It bypasses generic permission checks in the case where a task of the same
++ * task group attempts to access the node.
++ * The rational behind this is that glibc and bionic access this node for
++ * cross thread naming (pthread_set/getname_np(!self)). However, if
++ * PR_SET_DUMPABLE gets set to 0 this node among others becomes uid=0 gid=0,
++ * which locks out the cross thread naming implementation.
++ * This function makes sure that the node is always accessible for members of
++ * same thread group.
++ */
++static int proc_tid_comm_permission(struct inode *inode, int mask)
++{
++	bool is_same_tgroup;
++	struct task_struct *task;
++
++	task = get_proc_task(inode);
++	if (!task)
++		return -ESRCH;
++	is_same_tgroup = same_thread_group(current, task);
++	put_task_struct(task);
++
++	if (likely(is_same_tgroup && !(mask & MAY_EXEC))) {
++		/* This file (/proc/<pid>/task/<tid>/comm) can always be
++		 * read or written by the members of the corresponding
++		 * thread group.
++		 */
++		return 0;
++	}
++
++	return generic_permission(inode, mask);
++}
++
++static const struct inode_operations proc_tid_comm_inode_operations = {
++		.permission = proc_tid_comm_permission,
++};
++
++/*
+  * Tasks
+  */
+ static const struct pid_entry tid_base_stuff[] = {
+@@ -2932,7 +2970,9 @@ static const struct pid_entry tid_base_stuff[] = {
+ #ifdef CONFIG_SCHED_DEBUG
+ 	REG("sched",     S_IRUGO|S_IWUSR, proc_pid_sched_operations),
+ #endif
+-	REG("comm",      S_IRUGO|S_IWUSR, proc_pid_set_comm_operations),
++	NOD("comm",      S_IFREG|S_IRUGO|S_IWUSR,
++			 &proc_tid_comm_inode_operations,
++			 &proc_pid_set_comm_operations, {}),
+ #ifdef CONFIG_HAVE_ARCH_TRACEHOOK
+ 	INF("syscall",   S_IRUGO, proc_pid_syscall),
+ #endif
+-- 
+1.9.1
+

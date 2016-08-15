@@ -1,0 +1,78 @@
+From 1d25ff764a0eb168b510cd57b2a8f50d8db2dcde Mon Sep 17 00:00:00 2001
+From: Even Xu <even.xu@intel.com>
+Date: Wed, 20 Jul 2016 00:29:17 +0000
+Subject: [PATCH] Waiting TX messages be sent before close clients in ishtp
+ client driver.
+
+Issue:
+In current ishtp client driver, when a client is closed, all tx buffers
+will be removed even there are some messages not sent. So, if an application
+calls write() to write a message to tx buffer, then calls close() immediately,
+the previous message has big chance be removed from tx buffer and can not
+be sent to ishfw.
+
+Fix is:
+Because there is flow control mechanism between client driver and ishfw for
+each message sending, and flow control handled by client driver, so the bese
+way is keep waiting if tx buffers are not empty during close() calling,
+Until all messages are sent and tx buffers are empty.
+
+Change-Id: I82d4a6a462f428ffa8e03b5e582ae8c1618df5d1
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-35771
+Signed-off-by: Even Xu <even.xu@intel.com>
+Reviewed-on: https://android.intel.com:443/524445
+---
+ drivers/misc/intel-ish/hbm.c       |  1 +
+ drivers/misc/intel-ish/ishtp-api.c | 24 ++++++++++++++++++++++++
+ 2 files changed, 25 insertions(+)
+
+diff --git a/drivers/misc/intel-ish/hbm.c b/drivers/misc/intel-ish/hbm.c
+index dd54f47..8f16ff8 100644
+--- a/drivers/misc/intel-ish/hbm.c
++++ b/drivers/misc/intel-ish/hbm.c
+@@ -841,6 +841,7 @@ void	recv_hbm(struct ishtp_device *dev, struct ishtp_msg_hdr *ishtp_hdr)
+ 						spin_unlock_irqrestore(
+ 							&cl->tx_list_spinlock,
+ 							tx_flags);
++						wake_up(&cl->wait);
+ 					}
+ 				}
+ 				break;
+diff --git a/drivers/misc/intel-ish/ishtp-api.c b/drivers/misc/intel-ish/ishtp-api.c
+index c0bff25..79d6e26 100644
+--- a/drivers/misc/intel-ish/ishtp-api.c
++++ b/drivers/misc/intel-ish/ishtp-api.c
+@@ -95,6 +95,30 @@ static int ishtp_release(struct inode *inode, struct file *file)
+ 	 */
+ 	if ((dev->dev_state == ISHTP_DEV_ENABLED) &&
+ 			(cl->state == ISHTP_CL_CONNECTED)) {
++		int tx_list_empty = 0;
++		unsigned long	tx_flags;
++
++		/*
++		 * Check tx_list to see if all messages are sent
++		 */
++		spin_lock_irqsave(&cl->tx_list_spinlock, tx_flags);
++		tx_list_empty = list_empty(&cl->tx_list.list);
++		spin_unlock_irqrestore(&cl->tx_list_spinlock, tx_flags);
++
++		/*
++		 * if tx_list not empty, wait for all messages are sent done.
++		 * because of flow control for each message, the best way is
++		 * waiting for messages be sent instead of force flushing them.
++		 */
++		if (!tx_list_empty) {
++			int ret;
++			ret = wait_event_timeout(cl->wait,
++					list_empty(&cl->tx_list.list),
++					10 * HZ);
++			if (ret <= 0)
++				dev_err(dev->devc, "wating for send list empty timeout.\n");
++		}
++
+ 		cl->state = ISHTP_CL_DISCONNECTING;
+ 		rets = ishtp_cl_disconnect(cl);
+ 	}
+-- 
+1.9.1
+

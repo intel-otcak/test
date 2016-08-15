@@ -1,0 +1,29 @@
+From 9a9be72cfde63ea0aeea02e04d946963f879be8f Mon Sep 17 00:00:00 2001
+From: Mark Salyzyn <salyzyn@google.com>
+Date: Wed, 10 Feb 2016 14:44:42 -0800
+Subject: [PATCH 703/769] android: base-cfg: Add CONFIG_IP_MULTICAST
+
+(cherry pick from commit 1d0f72986958c2bf3528cadf7d7acf0771465fd1)
+
+Signed-off-by: Mark Salyzyn <salyzyn@google.com>
+Bug: 19173869
+Change-Id: I53d10e207a2fbfe6b1e2c1922ee138fe08a9233f
+---
+ android/configs/android-base.cfg | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/android/configs/android-base.cfg b/android/configs/android-base.cfg
+index 7089ef2..8bcd75d 100644
+--- a/android/configs/android-base.cfg
++++ b/android/configs/android-base.cfg
+@@ -43,6 +43,7 @@ CONFIG_IPV6_PRIVACY=y
+ CONFIG_IPV6_ROUTER_PREF=y
+ CONFIG_IPV6_ROUTE_INFO=y
+ CONFIG_IP_ADVANCED_ROUTER=y
++CONFIG_IP_MULTICAST=y
+ CONFIG_IP_MULTIPLE_TABLES=y
+ CONFIG_IP_NF_ARPFILTER=y
+ CONFIG_IP_NF_ARPTABLES=y
+-- 
+1.9.1
+

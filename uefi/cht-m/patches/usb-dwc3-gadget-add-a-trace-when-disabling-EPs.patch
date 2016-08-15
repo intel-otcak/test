@@ -1,0 +1,36 @@
+From 4f9b75d8b6e6ce10269a0509a4382f463791ee0b Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <balbi@ti.com>
+Date: Mon, 20 Jul 2015 14:46:15 -0500
+Subject: [PATCH 13/78] usb: dwc3: gadget: add a trace when disabling EPs
+
+We have a "Enabling %s" trace when enabling an endpoint
+but that message felt lonely without a matching
+"Disabling %s". Add it.
+
+Signed-off-by: Felipe Balbi <balbi@ti.com>
+(cherry picked from commit 7eaeac5c0e44921eb583d5b59b9c54741ecaa899)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I26dcde387cc285492f5a26c205257c44e7e81963
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-29845
+Reviewed-on: https://android.intel.com:443/508189
+---
+ drivers/usb/dwc3/gadget.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index ce46289..cebdd44 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -583,6 +583,8 @@ static int __dwc3_gadget_ep_disable(struct dwc3_ep *dep)
+ 	struct dwc3		*dwc = dep->dwc;
+ 	u32			reg;
+ 
++	dwc3_trace(trace_dwc3_gadget, "Disabling %s", dep->name);
++
+ 	dwc3_remove_requests(dwc, dep);
+ 
+ 	/* make sure HW endpoint isn't stalled */
+-- 
+1.9.1
+

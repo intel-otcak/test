@@ -1,0 +1,65 @@
+From 6261f03707d6e5ab6258a7e3577619a6ba1c03ee Mon Sep 17 00:00:00 2001
+From: Janusz Dziedzic <januszx.dziedzic@intel.com>
+Date: Thu, 12 May 2016 08:50:03 +0200
+Subject: [PATCH 56/78] Revert "usb: dwc3: Fix for disable SUSPHY is applicable
+ only for USB2.0."
+
+This reverts commit fb5b1b9bd29db98720add53edaff76cb46e958a2.
+
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Conflicts:
+	drivers/usb/dwc3/gadget.c
+
+Community version will be used here.
+
+Change-Id: Idf73feca91ffa9235b76f7934545a203189a611f
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-19337
+Reviewed-on: https://android.intel.com:443/511181
+---
+ drivers/usb/dwc3/gadget.c | 14 +++++---------
+ 1 file changed, 5 insertions(+), 9 deletions(-)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index c226814..045cdda 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -299,7 +299,7 @@ int dwc3_send_gadget_ep_cmd(struct dwc3 *dwc, unsigned ep,
+ 	struct dwc3_ep		*dep = dwc->eps[ep];
+ 	u32			timeout = 500;
+ 	u32			reg;
+-	u32			phycfg_val = 0;
++	u32			phycfg_val;
+ 	int			ret = -EINVAL;
+ 
+ 	trace_dwc3_gadget_ep_cmd(dep, cmd, params);
+@@ -308,12 +308,10 @@ int dwc3_send_gadget_ep_cmd(struct dwc3 *dwc, unsigned ep,
+ 	dwc3_writel(dwc->regs, DWC3_DEPCMDPAR1(ep), params->param1);
+ 	dwc3_writel(dwc->regs, DWC3_DEPCMDPAR2(ep), params->param2);
+ 
+-	if (dwc->gadget.speed != USB_SPEED_SUPER) {
+-		phycfg_val = dwc3_readl(dwc->regs, DWC3_GUSB2PHYCFG(0));
++	phycfg_val = dwc3_readl(dwc->regs, DWC3_GUSB2PHYCFG(0));
+ 
+-		dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(0),
+-			(phycfg_val & ~DWC3_GUSB2PHYCFG_SUSPHY));
+-	}
++	dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(0),
++		(phycfg_val & ~DWC3_GUSB2PHYCFG_SUSPHY));
+ 
+ 	dwc3_writel(dwc->regs, DWC3_DEPCMD(ep), cmd | DWC3_DEPCMD_CMDACT);
+ 	do {
+@@ -321,9 +319,7 @@ int dwc3_send_gadget_ep_cmd(struct dwc3 *dwc, unsigned ep,
+ 		if (!(reg & DWC3_DEPCMD_CMDACT)) {
+ 			dwc3_trace(trace_dwc3_gadget, "Command Complete --> %d",
+ 					DWC3_DEPCMD_STATUS(reg));
+-			if (dwc->gadget.speed != USB_SPEED_SUPER)
+-				dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(0),
+-				phycfg_val);
++			dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(0), phycfg_val);
+ 			if (DWC3_DEPCMD_STATUS(reg))
+ 				break;
+ 
+-- 
+1.9.1
+

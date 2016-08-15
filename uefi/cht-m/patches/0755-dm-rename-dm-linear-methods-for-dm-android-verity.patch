@@ -1,0 +1,159 @@
+From 6aba1865278a7bc60fdd58c31473b2afabcdc65d Mon Sep 17 00:00:00 2001
+From: Badhri Jagan Sridharan <Badhri@google.com>
+Date: Tue, 5 Apr 2016 11:18:16 -0700
+Subject: [PATCH 755/769] dm: rename dm-linear methods for dm-android-verity
+
+This keeps linear_target as static variable and just exposes
+the linear target methods for android-verity
+
+Change-Id: I4a377e417b00afd9ecccdb3e605fea31a7df112e
+Signed-off-by: Badhri Jagan Sridharan <Badhri@google.com>
+---
+ drivers/md/dm-android-verity.c | 14 +++++++-------
+ drivers/md/dm-android-verity.h | 12 ++++++++++++
+ drivers/md/dm-linear.c         | 30 +++++++++++++++---------------
+ 3 files changed, 34 insertions(+), 22 deletions(-)
+
+diff --git a/drivers/md/dm-android-verity.c b/drivers/md/dm-android-verity.c
+index f6ddbee..b7e0595 100644
+--- a/drivers/md/dm-android-verity.c
++++ b/drivers/md/dm-android-verity.c
+@@ -576,15 +576,15 @@ static int add_as_linear_device(struct dm_target *ti, char *dev)
+ 					DM_LINEAR_TARGET_OFFSET};
+ 	int err = 0;
+ 
+-	android_verity_target.dtr = linear_target.dtr,
+-	android_verity_target.map = linear_target.map,
+-	android_verity_target.status = linear_target.status,
+-	android_verity_target.ioctl = linear_target.ioctl,
+-	android_verity_target.merge = linear_target.merge,
+-	android_verity_target.iterate_devices = linear_target.iterate_devices,
++	android_verity_target.dtr = dm_linear_dtr,
++	android_verity_target.map = dm_linear_map,
++	android_verity_target.status = dm_linear_status,
++	android_verity_target.ioctl = dm_linear_ioctl,
++	android_verity_target.merge = dm_linear_merge,
++	android_verity_target.iterate_devices = dm_linear_iterate_devices,
+ 	android_verity_target.io_hints = NULL;
+ 
+-	err = linear_target.ctr(ti, DM_LINEAR_ARGS, linear_table_args);
++	err = dm_linear_ctr(ti, DM_LINEAR_ARGS, linear_table_args);
+ 
+ 	if (!err) {
+ 		DMINFO("Added android-verity as a linear target");
+diff --git a/drivers/md/dm-android-verity.h b/drivers/md/dm-android-verity.h
+index fe53863..efb7965 100644
+--- a/drivers/md/dm-android-verity.h
++++ b/drivers/md/dm-android-verity.h
+@@ -94,4 +94,16 @@ struct bio_read {
+ };
+ 
+ extern struct target_type linear_target;
++
++extern void dm_linear_dtr(struct dm_target *ti);
++extern int dm_linear_map(struct dm_target *ti, struct bio *bio);
++extern void dm_linear_status(struct dm_target *ti, status_type_t type,
++			unsigned status_flags, char *result, unsigned maxlen);
++extern int dm_linear_ioctl(struct dm_target *ti, unsigned int cmd,
++		unsigned long arg);
++extern int dm_linear_merge(struct dm_target *ti, struct bvec_merge_data *bvm,
++		struct bio_vec *biovec, int max_size);
++extern int dm_linear_iterate_devices(struct dm_target *ti,
++			iterate_devices_callout_fn fn, void *data);
++extern int dm_linear_ctr(struct dm_target *ti, unsigned int argc, char **argv);
+ #endif /* DM_ANDROID_VERITY_H */
+diff --git a/drivers/md/dm-linear.c b/drivers/md/dm-linear.c
+index 7328556..d42f109 100644
+--- a/drivers/md/dm-linear.c
++++ b/drivers/md/dm-linear.c
+@@ -25,7 +25,7 @@ struct linear_c {
+ /*
+  * Construct a linear mapping: <dev_path> <offset>
+  */
+-static int linear_ctr(struct dm_target *ti, unsigned int argc, char **argv)
++int dm_linear_ctr(struct dm_target *ti, unsigned int argc, char **argv)
+ {
+ 	struct linear_c *lc;
+ 	unsigned long long tmp;
+@@ -64,7 +64,7 @@ static int linear_ctr(struct dm_target *ti, unsigned int argc, char **argv)
+ 	return -EINVAL;
+ }
+ 
+-static void linear_dtr(struct dm_target *ti)
++void dm_linear_dtr(struct dm_target *ti)
+ {
+ 	struct linear_c *lc = (struct linear_c *) ti->private;
+ 
+@@ -89,14 +89,14 @@ static void linear_map_bio(struct dm_target *ti, struct bio *bio)
+ 			linear_map_sector(ti, bio->bi_iter.bi_sector);
+ }
+ 
+-static int linear_map(struct dm_target *ti, struct bio *bio)
++int dm_linear_map(struct dm_target *ti, struct bio *bio)
+ {
+ 	linear_map_bio(ti, bio);
+ 
+ 	return DM_MAPIO_REMAPPED;
+ }
+ 
+-static void linear_status(struct dm_target *ti, status_type_t type,
++void dm_linear_status(struct dm_target *ti, status_type_t type,
+ 			  unsigned status_flags, char *result, unsigned maxlen)
+ {
+ 	struct linear_c *lc = (struct linear_c *) ti->private;
+@@ -113,7 +113,7 @@ static void linear_status(struct dm_target *ti, status_type_t type,
+ 	}
+ }
+ 
+-static int linear_ioctl(struct dm_target *ti, unsigned int cmd,
++int dm_linear_ioctl(struct dm_target *ti, unsigned int cmd,
+ 			unsigned long arg)
+ {
+ 	struct linear_c *lc = (struct linear_c *) ti->private;
+@@ -130,7 +130,7 @@ static int linear_ioctl(struct dm_target *ti, unsigned int cmd,
+ 	return r ? : __blkdev_driver_ioctl(dev->bdev, dev->mode, cmd, arg);
+ }
+ 
+-static int linear_merge(struct dm_target *ti, struct bvec_merge_data *bvm,
++int dm_linear_merge(struct dm_target *ti, struct bvec_merge_data *bvm,
+ 			struct bio_vec *biovec, int max_size)
+ {
+ 	struct linear_c *lc = ti->private;
+@@ -145,7 +145,7 @@ static int linear_merge(struct dm_target *ti, struct bvec_merge_data *bvm,
+ 	return min(max_size, q->merge_bvec_fn(q, bvm, biovec));
+ }
+ 
+-static int linear_iterate_devices(struct dm_target *ti,
++int dm_linear_iterate_devices(struct dm_target *ti,
+ 				  iterate_devices_callout_fn fn, void *data)
+ {
+ 	struct linear_c *lc = ti->private;
+@@ -153,17 +153,17 @@ static int linear_iterate_devices(struct dm_target *ti,
+ 	return fn(ti, lc->dev, lc->start, ti->len, data);
+ }
+ 
+-struct target_type linear_target = {
++static struct target_type linear_target = {
+ 	.name   = "linear",
+ 	.version = {1, 2, 1},
+ 	.module = THIS_MODULE,
+-	.ctr    = linear_ctr,
+-	.dtr    = linear_dtr,
+-	.map    = linear_map,
+-	.status = linear_status,
+-	.ioctl  = linear_ioctl,
+-	.merge  = linear_merge,
+-	.iterate_devices = linear_iterate_devices,
++	.ctr    = dm_linear_ctr,
++	.dtr    = dm_linear_dtr,
++	.map    = dm_linear_map,
++	.status = dm_linear_status,
++	.ioctl  = dm_linear_ioctl,
++	.merge  = dm_linear_merge,
++	.iterate_devices = dm_linear_iterate_devices,
+ };
+ 
+ int __init dm_linear_init(void)
+-- 
+1.9.1
+

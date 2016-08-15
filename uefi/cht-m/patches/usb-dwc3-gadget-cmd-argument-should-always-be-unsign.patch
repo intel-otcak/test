@@ -1,0 +1,50 @@
+From 551c4372c0795fbcc6f2d5ee4871cdce567f585a Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <balbi@ti.com>
+Date: Fri, 5 Sep 2014 09:47:44 -0500
+Subject: [PATCH 03/78] usb: dwc3: gadget: cmd argument should always be
+ unsigned
+
+No functional changes, just making sure we're dealing
+with unsigned ints.
+
+Signed-off-by: Felipe Balbi <balbi@ti.com>
+(cherry picked from commit 3ece0ec474bf3cea9eefa7f92e3d4b6c3f9f71fd)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I2afdebe6d3efe89ae310e51dfe720621390f8652
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-29845
+Reviewed-on: https://android.intel.com:443/508179
+---
+ drivers/usb/dwc3/core.h   | 2 +-
+ drivers/usb/dwc3/gadget.c | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/usb/dwc3/core.h b/drivers/usb/dwc3/core.h
+index a433082..7f712c2 100644
+--- a/drivers/usb/dwc3/core.h
++++ b/drivers/usb/dwc3/core.h
+@@ -921,7 +921,7 @@ int dwc3_gadget_get_link_state(struct dwc3 *dwc);
+ int dwc3_gadget_set_link_state(struct dwc3 *dwc, enum dwc3_link_state state);
+ int dwc3_send_gadget_ep_cmd(struct dwc3 *dwc, unsigned ep,
+ 		unsigned cmd, struct dwc3_gadget_ep_cmd_params *params);
+-int dwc3_send_gadget_generic_command(struct dwc3 *dwc, int cmd, u32 param);
++int dwc3_send_gadget_generic_command(struct dwc3 *dwc, unsigned cmd, u32 param);
+ #else
+ static inline int dwc3_gadget_init(struct dwc3 *dwc)
+ { return 0; }
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index 3fbf72a..4cb1f35 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -262,7 +262,7 @@ void dwc3_gadget_giveback(struct dwc3_ep *dep, struct dwc3_request *req,
+ 	spin_lock(&dwc->lock);
+ }
+ 
+-int dwc3_send_gadget_generic_command(struct dwc3 *dwc, int cmd, u32 param)
++int dwc3_send_gadget_generic_command(struct dwc3 *dwc, unsigned cmd, u32 param)
+ {
+ 	u32		timeout = 500;
+ 	u32		reg;
+-- 
+1.9.1
+

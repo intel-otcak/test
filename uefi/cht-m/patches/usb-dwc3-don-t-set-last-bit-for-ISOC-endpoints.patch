@@ -1,0 +1,46 @@
+From f1ff301bf5e2c6f39d53abb963bb7f9cc8b99557 Mon Sep 17 00:00:00 2001
+From: Janusz Dziedzic <januszx.dziedzic@intel.com>
+Date: Thu, 7 Jul 2016 08:39:09 +0200
+Subject: [PATCH] usb: dwc3: don't set last bit for ISOC endpoints
+
+According to Synopsys Databook 2.60a, section 8.3.4,
+it's stated that:
+
+	The LST bit should be set to 0 (isochronous
+	transfers normally continue until the
+	endpoint is removed entirely, at which time
+	an End Transfer command is used to stop the
+	transfer).
+
+This patch makes sure that detail is observed and
+fixes a regression with Android Audio playback
+caused by recent changes to DWC3 gadget.
+
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@linux.intel.com>
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit 926d9a035a58cfe315bc2274c2b548543c3698a8)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: Ie170b7503de1fa61b1c16d2e9182f2c72922fcd8
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34989
+Reviewed-on: https://android.intel.com:443/522742
+---
+ drivers/usb/dwc3/gadget.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index 48cd960..d8d1b94 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -906,7 +906,7 @@ static void dwc3_prepare_one_trb(struct dwc3_ep *dep,
+ 	if (!req->request.no_interrupt && !chain)
+ 		trb->ctrl |= DWC3_TRB_CTRL_IOC | DWC3_TRB_CTRL_ISP_IMI;
+ 
+-	if (last)
++	if (last && !usb_endpoint_xfer_isoc(dep->endpoint.desc))
+ 		trb->ctrl |= DWC3_TRB_CTRL_LST;
+ 
+ 	if (chain)
+-- 
+1.9.1
+

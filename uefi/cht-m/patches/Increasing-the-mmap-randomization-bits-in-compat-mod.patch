@@ -1,0 +1,33 @@
+From d16d0cbd246be70cf518655876f687d548d71d25 Mon Sep 17 00:00:00 2001
+From: Mingwei Shi <mingwei.shi@intel.com>
+Date: Wed, 27 Jul 2016 07:22:47 +0000
+Subject: [PATCH] Increasing the mmap randomization bits in compat mode
+
+Increasing the mmap randomization bits from 8 to 16 to enhance
+the randomization for compat mode and meet the Android framework
+ASLR requirment measured by Android CTS AslrMallocTestCases.
+
+Change-Id: Iecc704bad36ef8d62b1b524c32f8d9468ebd9013
+Signed-off-by: Mingwei Shi <mingwei.shi@intel.com>
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-33674
+Reviewed-on: https://android.intel.com:443/526981
+---
+ arch/x86/configs/x86_64_defconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/x86/configs/x86_64_defconfig b/arch/x86/configs/x86_64_defconfig
+index c6b7226..c6163da 100644
+--- a/arch/x86/configs/x86_64_defconfig
++++ b/arch/x86/configs/x86_64_defconfig
+@@ -275,7 +275,7 @@ CONFIG_HAVE_IRQ_EXIT_ON_IRQ_STACK=y
+ CONFIG_HAVE_ARCH_MMAP_RND_BITS=y
+ CONFIG_ARCH_MMAP_RND_BITS=28
+ CONFIG_HAVE_ARCH_MMAP_RND_COMPAT_BITS=y
+-CONFIG_ARCH_MMAP_RND_COMPAT_BITS=8
++CONFIG_ARCH_MMAP_RND_COMPAT_BITS=16
+ CONFIG_OLD_SIGSUSPEND3=y
+ CONFIG_COMPAT_OLD_SIGACTION=y
+ 
+-- 
+1.9.1
+

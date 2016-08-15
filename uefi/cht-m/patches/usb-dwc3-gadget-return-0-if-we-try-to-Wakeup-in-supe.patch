@@ -1,0 +1,42 @@
+From 83ff69a77893ae134c3748d5befbf7914e766a89 Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <felipe.balbi@linux.intel.com>
+Date: Fri, 13 May 2016 10:19:42 +0300
+Subject: [PATCH 02/13] usb: dwc3: gadget: return 0 if we try to Wakeup in
+ superspeed
+
+Instead of returning -EINVAL when someone calls
+__dwc3_gadget_wakeup() in speeds > highspeed, let's
+return 0. There are no problems for the driver for
+calling it in superspeed as we cleanly just return.
+
+This avoids an annoying WARN_ONCE() always
+triggering during superspeed enumeration with LPM
+enabled.
+
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit 900753e61398ecdf3acc4394eea345bc421f5cbd)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I86adaecd41447939e247c6bf8886dff801165419
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34491
+Reviewed-on: https://android.intel.com:443/519126
+---
+ drivers/usb/dwc3/gadget.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index 8e9c555..926a0c9 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -1540,7 +1540,7 @@ static int __dwc3_gadget_wakeup(struct dwc3 *dwc)
+ 	speed = reg & DWC3_DSTS_CONNECTSPD;
+ 	if ((speed == DWC3_DSTS_SUPERSPEED)) {
+ 		dwc3_trace(trace_dwc3_gadget, "no wakeup on SuperSpeed\n");
+-		return -EINVAL;
++		return 0;
+ 	}
+ 
+ 	link_state = DWC3_DSTS_USBLNKST(reg);
+-- 
+1.9.1
+

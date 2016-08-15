@@ -1,0 +1,71 @@
+From cd86e965c896db0e39f73a9a389c482bf2a82a11 Mon Sep 17 00:00:00 2001
+From: Badhri Jagan Sridharan <Badhri@google.com>
+Date: Thu, 25 Feb 2016 16:43:34 -0800
+Subject: [PATCH 733/769] ANDROID: recommended.cfg: Setup verity root A/B
+
+While following A/B booting scheme, kernel needs to setup verity for
+root(i.e. system) partition before mounting it. Enable the following
+configs to do the same
+
+CONFIG_KEYS=y
+CONFIG_DM_ANDROID_VERITY=y
+CONFIG_ENCRYPTED_KEYS=y
+CONFIG_ASYMMETRIC_KEY_TYPE=y
+CONFIG_ASYMMETRIC_PUBLIC_KEY_SUBTYPE=y
+CONFIG_X509_CERTIFICATE_PARSER=y
+CONFIG_SYSTEM_TRUSTED_KEYRING=y
+
+Bug: 27175947
+
+Signed-off-by: Badhri Jagan Sridharan <Badhri@google.com>
+---
+ android/configs/android-recommended.cfg | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/android/configs/android-recommended.cfg b/android/configs/android-recommended.cfg
+index 4dd3b45..70f966b 100644
+--- a/android/configs/android-recommended.cfg
++++ b/android/configs/android-recommended.cfg
+@@ -6,14 +6,18 @@
+ # CONFIG_PM_WAKELOCKS_GC is not set
+ # CONFIG_VT is not set
+ CONFIG_ANDROID_TIMED_GPIO=y
++CONFIG_ASYMMETRIC_KEY_TYPE=y
++CONFIG_ASYMMETRIC_PUBLIC_KEY_SUBTYPE=y
+ CONFIG_BACKLIGHT_LCD_SUPPORT=y
+ CONFIG_BLK_DEV_LOOP=y
+ CONFIG_BLK_DEV_RAM=y
+ CONFIG_BLK_DEV_RAM_SIZE=8192
+ CONFIG_COMPACTION=y
++CONFIG_DM_ANDROID_VERITY=y
+ CONFIG_DM_UEVENT=y
+ CONFIG_DRAGONRISE_FF=y
+ CONFIG_ENABLE_DEFAULT_TRACERS=y
++CONFIG_ENCRYPTED_KEYS=y
+ CONFIG_EXT4_FS=y
+ CONFIG_EXT4_FS_SECURITY=y
+ CONFIG_FUSE_FS=y
+@@ -81,6 +85,7 @@ CONFIG_JOYSTICK_XPAD=y
+ CONFIG_JOYSTICK_XPAD_FF=y
+ CONFIG_JOYSTICK_XPAD_LEDS=y
+ CONFIG_KALLSYMS_ALL=y
++CONFIG_KEYS=y
+ CONFIG_KSM=y
+ CONFIG_LOGIG940_FF=y
+ CONFIG_LOGIRUMBLEPAD2_FF=y
+@@ -102,6 +107,7 @@ CONFIG_SCHEDSTATS=y
+ CONFIG_SMARTJOYPLUS_FF=y
+ CONFIG_SND=y
+ CONFIG_SOUND=y
++CONFIG_SYSTEM_TRUSTED_KEYRING=y
+ CONFIG_SUSPEND_TIME=y
+ CONFIG_TABLET_USB_ACECAD=y
+ CONFIG_TABLET_USB_AIPTEK=y
+@@ -123,3 +129,4 @@ CONFIG_USB_EHCI_HCD=y
+ CONFIG_USB_HIDDEV=y
+ CONFIG_USB_USBNET=y
+ CONFIG_VFAT_FS=y
++CONFIG_X509_CERTIFICATE_PARSER=y
+-- 
+1.9.1
+

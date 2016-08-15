@@ -1,0 +1,39 @@
+From 9239d47cca5a03d9442c22e92f6322ba7cbf3c33 Mon Sep 17 00:00:00 2001
+From: John Youn <johnyoun@synopsys.com>
+Date: Mon, 23 May 2016 11:32:38 -0700
+Subject: [PATCH 22/41] usb: dwc3: ep0: Fix endianness of wIndex passed to
+ dwc3_wIndex_to_dep
+
+The wIndex passed in here is CPU endianness, but the function expects
+little endian.
+
+Found with sparse.
+
+Signed-off-by: John Youn <johnyoun@synopsys.com>
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit 958b9fa7f8cfd5799534e98ba3d05d96a5e7ccb9)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I5e8b81ec9924c4de05025a5a6a20948122b27b7c
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34814
+Reviewed-on: https://android.intel.com:443/519792
+---
+ drivers/usb/dwc3/ep0.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/usb/dwc3/ep0.c b/drivers/usb/dwc3/ep0.c
+index e1f8055..1ecfac7 100644
+--- a/drivers/usb/dwc3/ep0.c
++++ b/drivers/usb/dwc3/ep0.c
+@@ -481,7 +481,7 @@ static int dwc3_ep0_handle_feature(struct dwc3 *dwc,
+ 	case USB_RECIP_ENDPOINT:
+ 		switch (wValue) {
+ 		case USB_ENDPOINT_HALT:
+-			dep = dwc3_wIndex_to_dep(dwc, wIndex);
++			dep = dwc3_wIndex_to_dep(dwc, ctrl->wIndex);
+ 			if (!dep)
+ 				return -EINVAL;
+ 			if (set == 0 && (dep->flags & DWC3_EP_WEDGE))
+-- 
+1.9.1
+

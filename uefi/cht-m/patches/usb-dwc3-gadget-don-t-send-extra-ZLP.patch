@@ -1,0 +1,38 @@
+From 693f939831c848eeba8065ba45efe92e1ee958d9 Mon Sep 17 00:00:00 2001
+From: John Youn <John.Youn@synopsys.com>
+Date: Tue, 22 Dec 2015 12:23:20 -0800
+Subject: [PATCH 45/78] usb: dwc3: gadget: don't send extra ZLP
+
+If the request->length is zero, a ZLP should already be sent due to that
+and another ZLP is not needed to terminate the transfer.
+
+Fixes: 04c03d10e507 ("usb: dwc3: gadget: handle request->zero")
+Signed-off-by: John Youn <johnyoun@synopsys.com>
+Signed-off-by: Felipe Balbi <balbi@ti.com>
+(cherry picked from commit d9261898a4b2c143c28568dc686a1becfc637a99)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I06f1177fb7506fa1be2e3012008635503c3928e1
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-19337
+Reviewed-on: https://android.intel.com:443/511170
+---
+ drivers/usb/dwc3/gadget.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index f1f086b..98a7429 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -1248,7 +1248,8 @@ static int dwc3_gadget_ep_queue(struct usb_ep *ep, struct usb_request *request,
+ 	 * extra usb_request ourselves so that it gets handled the same way as
+ 	 * any other request.
+ 	 */
+-	if (ret == 0 && request->zero && (request->length % ep->maxpacket == 0))
++	if (ret == 0 && request->zero && request->length &&
++	    (request->length % ep->maxpacket == 0))
+ 		ret = __dwc3_gadget_ep_queue_zlp(dwc, dep);
+ 
+ 	spin_unlock_irqrestore(&dwc->lock, flags);
+-- 
+1.9.1
+

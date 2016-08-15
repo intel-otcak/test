@@ -1,0 +1,36 @@
+From b086a8575bc32dca09c158f6d852af12e386c9a0 Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <felipe.balbi@linux.intel.com>
+Date: Wed, 6 Apr 2016 10:01:14 +0300
+Subject: [PATCH 67/78] usb: dwc3: gadget: don't interrupt when chained
+
+It makes no sense to interrupt in the middle of
+chained transfer. This patch just makes sure we
+don't do that.
+
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit 8e7046b71daeb6dfbf8c6eaa164e55d4e1dcb5c8)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I6809dc6968fecc9ec0f8ccfe0d4297bb39e9e4a6
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-19337
+Reviewed-on: https://android.intel.com:443/511192
+---
+ drivers/usb/dwc3/gadget.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index cc7afca..e273668 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -849,7 +849,7 @@ static void dwc3_prepare_one_trb(struct dwc3_ep *dep,
+ 	/* always enable Continue on Short Packet */
+ 	trb->ctrl |= DWC3_TRB_CTRL_CSP;
+ 
+-	if (!req->request.no_interrupt)
++	if (!req->request.no_interrupt && !chain)
+ 		trb->ctrl |= DWC3_TRB_CTRL_IOC | DWC3_TRB_CTRL_ISP_IMI;
+ 
+ 	if (last)
+-- 
+1.9.1
+

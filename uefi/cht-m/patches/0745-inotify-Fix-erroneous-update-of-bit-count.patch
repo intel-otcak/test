@@ -1,0 +1,29 @@
+From 250deee99225b4d7a525736e56d87123dfdcc8a2 Mon Sep 17 00:00:00 2001
+From: Daniel Rosenberg <drosen@google.com>
+Date: Wed, 23 Mar 2016 12:09:25 -0700
+Subject: [PATCH 745/769] inotify: Fix erroneous update of bit count
+
+Patch "vfs: add d_canonical_path for stacked filesystem support"
+erroneously updated the ALL_INOTIFY_BITS count. This changes it back
+
+Change-Id: Idb04edc736da276159d30f04c40cff9d6b1e070f
+---
+ fs/notify/inotify/inotify_user.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/notify/inotify/inotify_user.c b/fs/notify/inotify/inotify_user.c
+index d8365ea..a321504 100644
+--- a/fs/notify/inotify/inotify_user.c
++++ b/fs/notify/inotify/inotify_user.c
+@@ -814,7 +814,7 @@ static int __init inotify_user_setup(void)
+ 	BUILD_BUG_ON(IN_ISDIR != FS_ISDIR);
+ 	BUILD_BUG_ON(IN_ONESHOT != FS_IN_ONESHOT);
+ 
+-	BUG_ON(hweight32(ALL_INOTIFY_BITS) != 22);
++	BUG_ON(hweight32(ALL_INOTIFY_BITS) != 21);
+ 
+ 	inotify_inode_mark_cachep = KMEM_CACHE(inotify_inode_mark, SLAB_PANIC);
+ 
+-- 
+1.9.1
+

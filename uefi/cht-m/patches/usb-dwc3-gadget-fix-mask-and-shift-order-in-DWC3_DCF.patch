@@ -1,0 +1,39 @@
+From f6ca0fb948c797601b5d79d6597459f0f7c10742 Mon Sep 17 00:00:00 2001
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Date: Tue, 3 May 2016 10:49:00 +0300
+Subject: [PATCH 70/78] usb: dwc3: gadget: fix mask and shift order in
+ DWC3_DCFG_NUMP()
+
+In the original DWC3_DCFG_NUMP() was always zero.  It looks like the
+intent was to shift first and then do the mask.
+
+Fixes: 2a58f9c12bb3 ('usb: dwc3: gadget: disable automatic calculation of ACK TP NUMP')
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+Signed-off-by: Felipe Balbi <balbi@kernel.org>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+(cherry picked from commit 973986126a4152ab83d09263a02bf7d2d1bf3b6e)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I5ab7e9f128eee5469ecfd063ccc961fd03d59b08
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-19337
+Reviewed-on: https://android.intel.com:443/511195
+---
+ drivers/usb/dwc3/core.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/usb/dwc3/core.h b/drivers/usb/dwc3/core.h
+index d506215..42f62c1 100644
+--- a/drivers/usb/dwc3/core.h
++++ b/drivers/usb/dwc3/core.h
+@@ -214,7 +214,7 @@
+ #define DWC3_DCFG_FULLSPEED1	(3 << 0)
+ 
+ #define DWC3_DCFG_NUMP_SHIFT	17
+-#define DWC3_DCFG_NUMP(n)	(((n) & 0x1f) >> DWC3_DCFG_NUMP_SHIFT)
++#define DWC3_DCFG_NUMP(n)	(((n) >> DWC3_DCFG_NUMP_SHIFT) & 0x1f)
+ #define DWC3_DCFG_NUMP_MASK	(0x1f << DWC3_DCFG_NUMP_SHIFT)
+ #define DWC3_DCFG_LPM_CAP	(1 << 22)
+ 
+-- 
+1.9.1
+

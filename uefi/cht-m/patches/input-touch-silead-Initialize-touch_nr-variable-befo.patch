@@ -1,0 +1,34 @@
+From 6e07c945bf2c3c5916048ffe829606d384cc955f Mon Sep 17 00:00:00 2001
+From: Ulises Mendez Martinez <ulises.mendez.martinez@intel.com>
+Date: Mon, 11 Apr 2016 10:48:09 -0500
+Subject: [PATCH 12/41] input: touch: silead: Initialize touch_nr variable
+ before use it
+
+'touch_nr' is used uninitialized.
+
+Change-Id: I0abc490e21f8e2fc98dba0a6629f3f25b08ede50
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-31785
+Signed-off-by: Ulises Mendez Martinez <ulises.mendez.martinez@intel.com>
+Reviewed-on: https://android.intel.com:443/493170
+Reviewed-on: https://android.intel.com:443/504777
+---
+ drivers/input/touchscreen/silead.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/drivers/input/touchscreen/silead.c b/drivers/input/touchscreen/silead.c
+index d89d8d6..23ec539 100644
+--- a/drivers/input/touchscreen/silead.c
++++ b/drivers/input/touchscreen/silead.c
+@@ -191,8 +191,7 @@ static void silead_ts_read_data(struct i2c_client *client)
+ 	struct silead_ts_data *data = i2c_get_clientdata(client);
+ 	struct device *dev = &client->dev;
+ 	u8 buf[SILEAD_TS_DATA_LEN];
+-	int x, y, id, touch_nr, ret, i, offset;
+-
++	int x, y, id, touch_nr = 0, ret, i, offset;
+ 	ret = i2c_smbus_read_i2c_block_data(client, SILEAD_REG_DATA,
+ 					    SILEAD_TS_DATA_LEN, buf);
+ 	if (ret < 0) {
+-- 
+1.9.1
+

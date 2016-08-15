@@ -1,0 +1,30 @@
+From aec45bca8af63afa6ce83a47b725ad5a5bb9e17a Mon Sep 17 00:00:00 2001
+From: Russ Weight <russell.h.weight@intel.com>
+Date: Wed, 8 Jun 2016 17:31:29 -0700
+Subject: [PATCH 1/1] USB: Add forward declaration for hub_release
+
+Add a forward declaration for the hub_release function to
+accomodate references that take place before the function
+definition.
+
+Change-Id: I54dbbd5c6a4e7ba48abb3c1cbf4208c4fc74a1e8
+Signed-off-by: Russ Weight <russell.h.weight@intel.com>
+---
+ drivers/usb/core/hub.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/usb/core/hub.c b/drivers/usb/core/hub.c
+index d8905b7..40695ad 100644
+--- a/drivers/usb/core/hub.c
++++ b/drivers/usb/core/hub.c
+@@ -103,6 +103,7 @@ EXPORT_SYMBOL_GPL(ehci_cf_port_reset_rwsem);
+ #define HUB_DEBOUNCE_STABLE	 100
+ 
+ static int usb_reset_and_verify_device(struct usb_device *udev);
++static void hub_release(struct kref *kref);
+ 
+ static inline char *portspeed(struct usb_hub *hub, int portstatus)
+ {
+-- 
+1.9.1
+

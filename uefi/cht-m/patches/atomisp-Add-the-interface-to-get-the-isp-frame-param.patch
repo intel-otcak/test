@@ -1,0 +1,168 @@
+From cd11024285477e8c77a23c4102036607ee911d78 Mon Sep 17 00:00:00 2001
+From: haiqiang yao <haiqiangx.yao@intel.com>
+Date: Wed, 6 Apr 2016 11:14:27 +0800
+Subject: [PATCH 3/3] atomisp:Add the interface to get the isp frame params
+
+[Issue]
+The wrong lens shading table was applied to ISP.
+
+[Root Cause]
+The sensor crop params only was passed to hal and no isp crop
+params, this caused that lens shading table was mismatched
+with real frame.
+
+[Changes]
+this patch will add the interface to get the isp frame params
+and the Camera HAL uses ATOMISP_IOC_G_ISP_FRAME_PARAMS
+ioctl to get isp frame crop parameters.
+
+[Test Platform]
+BTNS
+
+Depends on:https://android.intel.com/#/c/490937/
+
+Change-Id: Ibba1a9620af9ae07c185a19d47c117738f4541c9
+Original-Tracked_On: #H1208086945
+Signed-off-by: haiqiang yao <haiqiangx.yao@intel.com>
+Reviewed-on: https://icggerrit.ir.intel.com/112159
+Approver: Bin B Han <bin.b.han@intel.com>
+Reviewed-by: Bin B Han <bin.b.han@intel.com>
+Reviewed-by: DaleiX Liu <daleix.liu@intel.com>
+Validation-Android: Wei Tao <wei.tao@intel.com>
+Integrator: WeiX Meng <weix.meng@intel.com>
+Reviewed-by: WeiX Meng <weix.meng@intel.com>
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-29110
+Signed-off-by: Tao Wei <wei.tao@intel.com>
+Reviewed-on: https://android.intel.com:443/495617
+---
+ .../pci/atomisp2/atomisp_driver/atomisp_cmd.c      | 68 ++++++++++++++++++++++
+ .../pci/atomisp2/atomisp_driver/atomisp_cmd.h      |  6 ++
+ .../atomisp_driver/atomisp_compat_ioctl32.c        |  1 +
+ .../pci/atomisp2/atomisp_driver/atomisp_ioctl.c    |  3 +
+ 4 files changed, 78 insertions(+)
+
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_cmd.c b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_cmd.c
+index 7ab93d3..bbdbe68 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_cmd.c
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_cmd.c
+@@ -2562,6 +2562,74 @@ int atomisp_set_array_res(struct atomisp_sub_device *asd,
+ }
+ 
+ /*
++ * Function  to get isp crop offset size & image effective size
++ */
++int atomisp_get_isp_frame_params(struct atomisp_sub_device *asd,
++			 struct atomisp_isp_frame_params  *config)
++{
++	struct ia_css_stream_config *s_config =
++		&asd->stream_env[ATOMISP_INPUT_STREAM_GENERAL].stream_config;
++	struct atomisp_stream_env *stream_env =
++		&asd->stream_env[ATOMISP_INPUT_STREAM_GENERAL];
++	struct atomisp_resolution  eff_res, sensor_res;
++	struct atomisp_dvs2_bq_resolutions bq_res;
++	int ret;
++
++	memset(&eff_res, 0, sizeof(eff_res));
++	memset(&sensor_res, 0, sizeof(sensor_res));
++	memset(&bq_res, 0, sizeof(bq_res));
++
++	eff_res.width =
++		stream_env->stream_config.input_config.effective_res.width;
++	eff_res.height =
++		stream_env->stream_config.input_config.effective_res.height;
++	if (eff_res.width == 0 || eff_res.height == 0) {
++		dev_err(asd->isp->dev, "%s err effective resolution"
++				, __func__);
++		return -EINVAL;
++	}
++
++	sensor_res.width = s_config->input_config.input_res.width;
++	sensor_res.height = s_config->input_config.input_res.height;
++	if (sensor_res.width == 0 || sensor_res.height == 0) {
++		dev_err(asd->isp->dev, "%s err sensor resolution"
++				, __func__);
++		return -EINVAL;
++	}
++
++	if (sensor_res.width < eff_res.width ||
++		sensor_res.height < eff_res.height) {
++		dev_err(asd->isp->dev, "%s err isp frame params"
++				, __func__);
++		return -EINVAL;
++	}
++	if (asd->run_mode->val == ATOMISP_RUN_MODE_VIDEO) {
++		ret = atomisp_get_dvs2_bq_resolutions(asd, &bq_res);
++		if (ret) {
++			dev_err(asd->isp->dev, "%s err get dvs2 bq params"
++				, __func__);
++			return -EINVAL;
++		}
++		config->isp_crop_image_width =
++			bq_res.source_bq.width_bq * 2;
++		config->isp_crop_image_height =
++			bq_res.source_bq.height_bq * 2;
++		config->isp_horizontal_crop_offset =
++			(sensor_res.width - config->isp_crop_image_width) / 2;
++		config->isp_vertical_crop_offset =
++			(sensor_res.height - config->isp_crop_image_height) / 2;
++	} else {
++		config->isp_crop_image_width = eff_res.width;
++		config->isp_crop_image_height = eff_res.height;
++		config->isp_horizontal_crop_offset =
++			(sensor_res.width - eff_res.width) / 2;
++		config->isp_vertical_crop_offset =
++			(sensor_res.height - eff_res.height) / 2;
++	}
++	return 0;
++}
++
++/*
+  * Function to get DVS2 BQ resolution settings
+  */
+ int atomisp_get_dvs2_bq_resolutions(struct atomisp_sub_device *asd,
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_cmd.h b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_cmd.h
+index 9655db5..f5e374f 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_cmd.h
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_cmd.h
+@@ -301,6 +301,12 @@ int atomisp_set_array_res(struct atomisp_sub_device *asd,
+ 			struct atomisp_resolution  *config);
+ 
+ /*
++ * Function  to get isp crop offset size & image effective size
++ */
++int atomisp_get_isp_frame_params(struct atomisp_sub_device *asd,
++			 struct atomisp_isp_frame_params  *config);
++
++/*
+  * Function to calculate real zoom region for every pipe
+  */
+ int atomisp_calculate_real_zoom_region(struct atomisp_sub_device *asd,
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_compat_ioctl32.c b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_compat_ioctl32.c
+index ea16614..3a5903a 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_compat_ioctl32.c
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_compat_ioctl32.c
+@@ -1177,6 +1177,7 @@ long atomisp_compat_ioctl32(struct file *file,
+ 	case ATOMISP_IOC_G_SENSOR_AE_BRACKETING_MODE:
+ 	case ATOMISP_IOC_G_INVALID_FRAME_NUM:
+ 	case ATOMISP_IOC_S_ARRAY_RESOLUTION:
++	case ATOMISP_IOC_G_ISP_FRAME_PARAMS:
+ 	case ATOMISP_IOC_S_SENSOR_RUNMODE:
+ 	case ATOMISP_IOC_G_UPDATE_EXPOSURE:
+ 		ret = native_ioctl(file, cmd, arg);
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_ioctl.c b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_ioctl.c
+index 837c786..e957cbe 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_ioctl.c
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_ioctl.c
+@@ -3084,6 +3084,9 @@ static long atomisp_vidioc_default(struct file *file, void *fh,
+ 	case ATOMISP_IOC_S_ARRAY_RESOLUTION:
+ 		err = atomisp_set_array_res(asd, arg);
+ 		break;
++	case ATOMISP_IOC_G_ISP_FRAME_PARAMS:
++		err = atomisp_get_isp_frame_params(asd, arg);
++		break;
+ 	default:
+ 		err = -EINVAL;
+ 		break;
+-- 
+1.9.1
+

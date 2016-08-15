@@ -1,0 +1,60 @@
+From 749f05fa966fcd9f2efde282756905aba35f9d73 Mon Sep 17 00:00:00 2001
+From: John Youn <johnyoun@synopsys.com>
+Date: Mon, 23 May 2016 11:32:47 -0700
+Subject: [PATCH 25/41] usb: dwc3: Endianness issue on dwc3_log_ctrl
+
+Sparse complains even though it looks ok. Probably it cannot detect that
+the wValue, wIndex, and wLength are declared __le16 due to the macro
+magic.
+
+Redeclare them as CPU endianness and make the conversion on assignment.
+
+Signed-off-by: John Youn <johnyoun@synopsys.com>
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit 96bedb637a1e1ad8e7ed781fa020550aae2a8f16)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: Ic6275c1cfd1e4b4d58385afa2d118d88eba2b2e2
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34814
+Reviewed-on: https://android.intel.com:443/519795
+---
+ drivers/usb/dwc3/trace.h | 16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/usb/dwc3/trace.h b/drivers/usb/dwc3/trace.h
+index bc6a5e2..0565bdd 100644
+--- a/drivers/usb/dwc3/trace.h
++++ b/drivers/usb/dwc3/trace.h
+@@ -86,21 +86,21 @@ DECLARE_EVENT_CLASS(dwc3_log_ctrl,
+ 	TP_STRUCT__entry(
+ 		__field(__u8, bRequestType)
+ 		__field(__u8, bRequest)
+-		__field(__le16, wValue)
+-		__field(__le16, wIndex)
+-		__field(__le16, wLength)
++		__field(__u16, wValue)
++		__field(__u16, wIndex)
++		__field(__u16, wLength)
+ 	),
+ 	TP_fast_assign(
+ 		__entry->bRequestType = ctrl->bRequestType;
+ 		__entry->bRequest = ctrl->bRequest;
+-		__entry->wValue = ctrl->wValue;
+-		__entry->wIndex = ctrl->wIndex;
+-		__entry->wLength = ctrl->wLength;
++		__entry->wValue = le16_to_cpu(ctrl->wValue);
++		__entry->wIndex = le16_to_cpu(ctrl->wIndex);
++		__entry->wLength = le16_to_cpu(ctrl->wLength);
+ 	),
+ 	TP_printk("bRequestType %02x bRequest %02x wValue %04x wIndex %04x wLength %d",
+ 		__entry->bRequestType, __entry->bRequest,
+-		le16_to_cpu(__entry->wValue), le16_to_cpu(__entry->wIndex),
+-		le16_to_cpu(__entry->wLength)
++		__entry->wValue, __entry->wIndex,
++		__entry->wLength
+ 	)
+ );
+ 
+-- 
+1.9.1
+

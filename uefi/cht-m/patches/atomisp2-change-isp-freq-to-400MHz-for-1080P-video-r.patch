@@ -1,0 +1,74 @@
+From 58286367497c01037926664a305b715e1f5ef2e3 Mon Sep 17 00:00:00 2001
+From: Bin Han <bin.b.han@intel.com>
+Date: Mon, 29 Feb 2016 11:56:29 +0800
+Subject: [PATCH 2/5] atomisp2: change isp freq to 400MHz for 1080P video
+ recording
+
+BTNS 1080P video recording needs to do YUV downscaling,
+therefore we need to raise the ISP freq to 400MHz for it.
+
+Change-Id: I76450a8bade54f94956c08b4e86a565104831ade
+Original-Tracked_On: #H1504169207
+Signed-off-by: Bin Han <bin.b.han@intel.com>
+Reviewed-on: https://icggerrit.ir.intel.com/104683
+Approver: Jing Tao <jing.tao@intel.com>
+Reviewed-by: DaleiX Liu <daleix.liu@intel.com>
+Validation-Android: Wei Tao <wei.tao@intel.com>
+Reviewed-by: HaiqiangX Yao <haiqiangx.yao@intel.com>
+Build: Dessert M BXT RVP (SC)
+Integrator: WeiX Meng <weix.meng@intel.com>
+Build: Dessert M CHT FFD (SC)
+Reviewed-by: WeiX Meng <weix.meng@intel.com>
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-22830
+Signed-off-by: Tao Wei <wei.tao@intel.com>
+Reviewed-on: https://android.intel.com:443/480579
+---
+ .../atomisp2/atomisp_driver/atomisp_dfs_tables.h   | 25 ++--------------------
+ 1 file changed, 2 insertions(+), 23 deletions(-)
+
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_dfs_tables.h b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_dfs_tables.h
+index 2ba88da..58b638a 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_dfs_tables.h
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_dfs_tables.h
+@@ -137,36 +137,15 @@ static const struct atomisp_freq_scaling_rule dfs_rules_merr_117a[] = {
+ 	{
+ 		.width = 1920,
+ 		.height = 1080,
+-		.fps = 30,
+-		.isp_freq = ISP_FREQ_266MHZ,
+-		.run_mode = ATOMISP_RUN_MODE_VIDEO,
+-	},
+-	{
+-		.width = 1080,
+-		.height = 1920,
+-		.fps = 30,
++		.fps = ISP_FREQ_RULE_ANY,
+ 		.isp_freq = ISP_FREQ_400MHZ,
+ 		.run_mode = ATOMISP_RUN_MODE_VIDEO,
+ 	},
+ 	{
+-		.width = 1920,
+-		.height = 1080,
+-		.fps = 45,
+-		.isp_freq = ISP_FREQ_320MHZ,
+-		.run_mode = ATOMISP_RUN_MODE_VIDEO,
+-	},
+-	{
+-		.width = 1080,
+-		.height = 1920,
+-		.fps = 45,
+-		.isp_freq = ISP_FREQ_320MHZ,
+-		.run_mode = ATOMISP_RUN_MODE_VIDEO,
+-	},
+-	{
+ 		.width = ISP_FREQ_RULE_ANY,
+ 		.height = ISP_FREQ_RULE_ANY,
+ 		.fps = 60,
+-		.isp_freq = ISP_FREQ_356MHZ,
++		.isp_freq = ISP_FREQ_400MHZ,
+ 		.run_mode = ATOMISP_RUN_MODE_VIDEO,
+ 	},
+ 	{
+-- 
+1.9.1
+

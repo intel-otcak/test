@@ -1,0 +1,34 @@
+From b75f241096abf3c3c0f38c55f1054ec10d130511 Mon Sep 17 00:00:00 2001
+From: Matthew Moeller <moeller.matt@gmail.com>
+Date: Wed, 9 Mar 2016 20:19:25 -0600
+Subject: [PATCH 735/769] ANDROID: usb: u_ether: Add missing rx_work init
+
+commit 398a708ed5f3ef771d96dfb9b95b5d5170d17eb7
+usb: u_ether: Add workqueue as bottom half handler for rx data path
+
+set up a worker for the rx data path but missed a case where the
+work_struct needed to be initialized.
+
+This patch adds the missing 'INIT_WORK'
+
+Change-Id: I2daabd39d35b3e17a3054837282d649d9c78a0aa
+Signed-off-by: Matthew Moeller <moeller.matt@gmail.com>
+---
+ drivers/usb/gadget/u_ether.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/usb/gadget/u_ether.c b/drivers/usb/gadget/u_ether.c
+index 28b291a..9587c78 100644
+--- a/drivers/usb/gadget/u_ether.c
++++ b/drivers/usb/gadget/u_ether.c
+@@ -1005,6 +1005,7 @@ struct net_device *gether_setup_name_default(const char *netname)
+ 	spin_lock_init(&dev->lock);
+ 	spin_lock_init(&dev->req_lock);
+ 	INIT_WORK(&dev->work, eth_work);
++	INIT_WORK(&dev->rx_work, process_rx_w);
+ 	INIT_LIST_HEAD(&dev->tx_reqs);
+ 	INIT_LIST_HEAD(&dev->rx_reqs);
+ 
+-- 
+1.9.1
+

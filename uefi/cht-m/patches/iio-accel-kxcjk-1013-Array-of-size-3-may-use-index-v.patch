@@ -1,0 +1,35 @@
+From 68bdfd8c713b99f8a9462320215d764fb0b7a4eb Mon Sep 17 00:00:00 2001
+From: Kishore Kadiyala <kishore.kadiyala@intel.com>
+Date: Mon, 29 Feb 2016 22:30:43 +0530
+Subject: [PATCH 03/15] iio: accel: kxcjk-1013: Array of size 3 may use index
+ value 3
+
+Klockworks has reported an critical where an Array
+'odr_start_up_times' of size 3 may use index value(s) 3.
+
+Change-Id: Ie295e3b8bd26d447d658ad053b3c69b43e10eb5f
+Signed-off-by: Kishore Kadiyala <kishore.kadiyala@intel.com>
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-27738
+Orig-Tracked-On: https://jira01.devtools.intel.com/browse/OAM-21888
+Reviewed-on: https://android.intel.com:443/490322
+---
+ drivers/iio/accel/kxcjk-1013.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/iio/accel/kxcjk-1013.c b/drivers/iio/accel/kxcjk-1013.c
+index d29e7c5..0c1b7c6 100644
+--- a/drivers/iio/accel/kxcjk-1013.c
++++ b/drivers/iio/accel/kxcjk-1013.c
+@@ -1232,6 +1232,9 @@ static int kxcjk1013_probe(struct i2c_client *client,
+ 	} else
+ 		return -ENODEV;
+ 
++	if (data->chipset >=  KX_MAX_CHIPS)
++		return -ENODEV;
++
+ 	ret = kxcjk1013_chip_init(data);
+ 	if (ret < 0)
+ 		return ret;
+-- 
+1.9.1
+

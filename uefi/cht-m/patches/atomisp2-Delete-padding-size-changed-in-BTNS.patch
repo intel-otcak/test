@@ -1,0 +1,52 @@
+From fb937a15c5bd1c1402f1d8b48c4049bee3b37a63 Mon Sep 17 00:00:00 2001
+From: "Liu,Dalei" <daleix.liu@intel.com>
+Date: Mon, 7 Mar 2016 13:53:17 +0800
+Subject: [PATCH 3/5] atomisp2: Delete padding size changed in BTNS
+
+When padding size changed, System will select wrong
+resolution, It'll lead some problem (FOV issue or pipe
+create failed).
+
+Change-Id: I26ae632ab55cc65631a5ddcbf3b18fc728c2c631
+Original-Tracked_On: #H1404794884
+Signed-off-by: Liu,Dalei <daleix.liu@intel.com>
+Reviewed-on: https://icggerrit.ir.intel.com/105958
+Reviewed-by: HaiqiangX Yao <haiqiangx.yao@intel.com>
+Approver: Bin B Han <bin.b.han@intel.com>
+Reviewed-by: Bin B Han <bin.b.han@intel.com>
+Build: Dessert M BXT RVP (SC)
+Reviewed-by: GuoqingX Zhang <guoqingx.zhang@intel.com>
+Build: Dessert M CHT FFD (SC)
+Validation-Android: Wei Tao <wei.tao@intel.com>
+Integrator: WeiX Meng <weix.meng@intel.com>
+Reviewed-by: WeiX Meng <weix.meng@intel.com>
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-22830
+Signed-off-by: Tao Wei <wei.tao@intel.com>
+Reviewed-on: https://android.intel.com:443/480580
+---
+ .../camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_cmd.c      | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_cmd.c b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_cmd.c
+index 267a44f..9334854 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_cmd.c
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_cmd.c
+@@ -5814,6 +5814,7 @@ int atomisp_set_fmt(struct video_device *vdev, struct v4l2_format *f)
+ 				V4L2_SUBDEV_FORMAT_ACTIVE,
+ 				source_pad, &isp_source_fmt);
+ 
++#ifndef CONFIG_EXTERNAL_BTNS_CAMERA
+ 	if (!atomisp_subdev_format_conversion(asd, source_pad)) {
+ 		padding_w = 0;
+ 		padding_h = 0;
+@@ -5821,6 +5822,7 @@ int atomisp_set_fmt(struct video_device *vdev, struct v4l2_format *f)
+ 		padding_w = 12;
+ 		padding_h = 12;
+ 	}
++#endif
+ 
+ 	/* construct resolution supported by isp */
+ 	if (res_overflow && !asd->continuous_mode->val) {
+-- 
+1.9.1
+

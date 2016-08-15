@@ -1,0 +1,85 @@
+From ab4916ec5f9ca72581171195f54d9a21d8d52fdb Mon Sep 17 00:00:00 2001
+From: Daniel Rosenberg <drosen@google.com>
+Date: Thu, 11 Feb 2016 16:44:15 -0800
+Subject: [PATCH 743/769] vfs: add d_canonical_path for stacked filesystem
+ support
+
+Inotify does not currently know when a filesystem
+is acting as a wrapper around another fs. This means
+that inotify watchers will miss any modifications to
+the base file, as well as any made in a separate
+stacked fs that points to the same file.
+d_canonical_path solves this problem by allowing the fs
+to map a dentry to a path in the lower fs. Inotify
+can use it to find the appropriate place to watch to
+be informed of all changes to a file.
+
+Change-Id: I09563baffad1711a045e45c1bd0bd8713c2cc0b6
+Signed-off-by: Daniel Rosenberg <drosen@google.com>
+---
+ fs/notify/inotify/inotify_user.c | 17 ++++++++++++++---
+ include/linux/dcache.h           |  1 +
+ 2 files changed, 15 insertions(+), 3 deletions(-)
+
+diff --git a/fs/notify/inotify/inotify_user.c b/fs/notify/inotify/inotify_user.c
+index 78a2ca3..d8365ea 100644
+--- a/fs/notify/inotify/inotify_user.c
++++ b/fs/notify/inotify/inotify_user.c
+@@ -703,6 +703,8 @@ SYSCALL_DEFINE3(inotify_add_watch, int, fd, const char __user *, pathname,
+ 	struct fsnotify_group *group;
+ 	struct inode *inode;
+ 	struct path path;
++	struct path alteredpath;
++	struct path *canonical_path = &path;
+ 	struct fd f;
+ 	int ret;
+ 	unsigned flags = 0;
+@@ -730,13 +732,22 @@ SYSCALL_DEFINE3(inotify_add_watch, int, fd, const char __user *, pathname,
+ 	if (ret)
+ 		goto fput_and_out;
+ 
++	/* support stacked filesystems */
++	if(path.dentry && path.dentry->d_op) {
++		if (path.dentry->d_op->d_canonical_path) {
++			path.dentry->d_op->d_canonical_path(path.dentry, &alteredpath);
++			canonical_path = &alteredpath;
++			path_put(&path);
++		}
++	}
++
+ 	/* inode held in place by reference to path; group by fget on fd */
+-	inode = path.dentry->d_inode;
++	inode = canonical_path->dentry->d_inode;
+ 	group = f.file->private_data;
+ 
+ 	/* create/update an inode mark */
+ 	ret = inotify_update_watch(group, inode, mask);
+-	path_put(&path);
++	path_put(canonical_path);
+ fput_and_out:
+ 	fdput(f);
+ 	return ret;
+@@ -803,7 +814,7 @@ static int __init inotify_user_setup(void)
+ 	BUILD_BUG_ON(IN_ISDIR != FS_ISDIR);
+ 	BUILD_BUG_ON(IN_ONESHOT != FS_IN_ONESHOT);
+ 
+-	BUG_ON(hweight32(ALL_INOTIFY_BITS) != 21);
++	BUG_ON(hweight32(ALL_INOTIFY_BITS) != 22);
+ 
+ 	inotify_inode_mark_cachep = KMEM_CACHE(inotify_inode_mark, SLAB_PANIC);
+ 
+diff --git a/include/linux/dcache.h b/include/linux/dcache.h
+index bf72e9a..d7bbe6f 100644
+--- a/include/linux/dcache.h
++++ b/include/linux/dcache.h
+@@ -160,6 +160,7 @@ struct dentry_operations {
+ 	char *(*d_dname)(struct dentry *, char *, int);
+ 	struct vfsmount *(*d_automount)(struct path *);
+ 	int (*d_manage)(struct dentry *, bool);
++	void (*d_canonical_path)(const struct dentry *, struct path *);
+ } ____cacheline_aligned;
+ 
+ /*
+-- 
+1.9.1
+

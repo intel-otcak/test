@@ -1,0 +1,38 @@
+From 44391119d49151e4248f7faab293d9e1792d2a02 Mon Sep 17 00:00:00 2001
+From: Alejandro Ochoa <alejandro.ochoa@intel.com>
+Date: Thu, 28 Apr 2016 15:11:00 -0500
+Subject: [PATCH 10/41] input: touchscreen: silead: deactive debug logs set
+ manually
+
+Touchscreen driver is very verbose and as this loading the console
+output. The system is loaded with a high priority process starving
+out other clients from serving interrupts. System performance is
+affected by scheduling the serial output too much. Logs are sent
+to the console every time there is an interaction with the device
+by touching the screen.
+
+Change-Id: Icb21801911868cc0313f1db162e4a00b8ae57144
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-31785
+Signed-off-by: Alejandro Ochoa <alejandro.ochoa@intel.com>
+Reviewed-on: https://android.intel.com:443/501512
+Reviewed-on: https://android.intel.com:443/504775
+---
+ drivers/input/touchscreen/silead.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/input/touchscreen/silead.c b/drivers/input/touchscreen/silead.c
+index afe8929..78d2183 100644
+--- a/drivers/input/touchscreen/silead.c
++++ b/drivers/input/touchscreen/silead.c
+@@ -15,7 +15,7 @@
+  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  *  GNU General Public License for more details.
+  * ------------------------------------------------------------------------- */
+-#define DEBUG
++/*#define DEBUG*/
+ 
+ #include <linux/i2c.h>
+ #include <linux/module.h>
+-- 
+1.9.1
+

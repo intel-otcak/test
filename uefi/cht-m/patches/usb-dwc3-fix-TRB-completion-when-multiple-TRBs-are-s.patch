@@ -1,0 +1,70 @@
+From 685e206ec3662f23c14f2927b5db9dc57fa097c8 Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <balbi@ti.com>
+Date: Thu, 4 Sep 2014 10:28:10 -0500
+Subject: [PATCH 39/78] usb: dwc3: fix TRB completion when multiple TRBs are
+ started
+
+After commit 2ec2a8be (usb: dwc3: gadget:
+always enable IOC on bulk/interrupt transfers)
+we created a situation where it was possible to
+hang a bulk/interrupt endpoint if we had more
+than one pending request in our queue and they
+were both started with a single Start Transfer
+command.
+
+The problems triggers because we had not enabled
+Transfer In Progress event for those endpoints
+and we were not able to process early giveback
+of requests completed without LST bit set.
+
+Fix the problem by finally enabling Xfer In Progress
+event for all endpoint types, except control.
+
+Fixes: 2ec2a8be (usb: dwc3: gadget: always
+	enable IOC on bulk/interrupt transfers)
+Cc: <stable@vger.kernel.org> # v3.14+
+Reported-by: Pratyush Anand <pratyush.anand@st.com>
+Signed-off-by: Felipe Balbi <balbi@ti.com>
+
+(cherry picked from commit 0b93a4c838fa10370d72f86fe712426ac63804de)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Conflicts:
+	drivers/usb/dwc3/gadget.c
+
+Change-Id: I87afa93acadd3acae400eb044da336f6a16eddf5
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-19337
+Reviewed-on: https://android.intel.com:443/511164
+---
+ drivers/usb/dwc3/gadget.c | 8 +-------
+ 1 file changed, 1 insertion(+), 7 deletions(-)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index 7644cf3..e629d0b 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -445,7 +445,7 @@ static int dwc3_gadget_set_ep_config(struct dwc3 *dwc, struct dwc3_ep *dep,
+ 		dep->stream_capable = true;
+ 	}
+ 
+-	if (usb_endpoint_xfer_isoc(desc))
++	if (!usb_endpoint_xfer_control(desc))
+ 		params.param1 |= DWC3_DEPCFG_XFER_IN_PROGRESS_EN;
+ 
+ 	/*
+@@ -2158,12 +2158,6 @@ static void dwc3_endpoint_interrupt(struct dwc3 *dwc,
+ 		dwc3_endpoint_transfer_complete(dwc, dep, event);
+ 		break;
+ 	case DWC3_DEPEVT_XFERINPROGRESS:
+-		if (!usb_endpoint_xfer_isoc(dep->endpoint.desc)) {
+-			dwc3_trace(trace_dwc3_gadget, "%s is not an Isochronous endpoint",
+-					dep->name);
+-			return;
+-		}
+-
+ 		dwc3_endpoint_transfer_complete(dwc, dep, event);
+ 		break;
+ 	case DWC3_DEPEVT_XFERNOTREADY:
+-- 
+1.9.1
+

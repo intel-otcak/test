@@ -1,0 +1,59 @@
+From df522e764fee758976139bccdae0e7e34212886c Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <felipe.balbi@linux.intel.com>
+Date: Fri, 13 May 2016 10:07:47 +0300
+Subject: [PATCH 02/41] usb: dwc3: gadget: rely on sg_is_last() and
+ list_is_last()
+
+sg_is_last() and list_is_last() will encode the
+required information for the driver to make
+decisions WRT CHN and LST bits.
+
+While at that, also replace '1' with 'true' for
+consistency.
+
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit 6aff483295950abcf3be1a99f56f308bd6a1bab4)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: Ied6a81ba544c6553b3d7cf91e2e997930216a6d8
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34814
+Reviewed-on: https://android.intel.com:443/519772
+---
+ drivers/usb/dwc3/gadget.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index eac0cb5..f6fe8c9 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -952,10 +952,10 @@ static void dwc3_prepare_trbs(struct dwc3_ep *dep)
+ 				length = sg_dma_len(s);
+ 				dma = sg_dma_address(s);
+ 
+-				if (i == (request->num_mapped_sgs - 1) ||
+-						sg_is_last(s)) {
+-					if (list_empty(&dep->pending_list))
++				if (sg_is_last(s)) {
++					if (list_is_last(&req->list, &dep->pending_list))
+ 						last_one = true;
++
+ 					chain = false;
+ 				}
+ 
+@@ -981,11 +981,11 @@ static void dwc3_prepare_trbs(struct dwc3_ep *dep)
+ 			trbs_left--;
+ 
+ 			if (!trbs_left)
+-				last_one = 1;
++				last_one = true;
+ 
+ 			/* Is this the last request? */
+ 			if (list_is_last(&req->list, &dep->pending_list))
+-				last_one = 1;
++				last_one = true;
+ 
+ 			dwc3_prepare_one_trb(dep, req, dma, length,
+ 					last_one, false, 0);
+-- 
+1.9.1
+

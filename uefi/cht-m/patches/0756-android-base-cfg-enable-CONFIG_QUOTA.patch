@@ -1,0 +1,27 @@
+From d95233df9de6806a553dd85fd8a99439093c4f0c Mon Sep 17 00:00:00 2001
+From: Rom Lemarchand <romlem@android.com>
+Date: Thu, 7 Apr 2016 07:19:34 -0700
+Subject: [PATCH 756/769] android: base-cfg: enable CONFIG_QUOTA
+
+Bug: 28032718
+Change-Id: I7cb6b641f72085e69b90dca11d2ea68adcd02390
+(cherry picked from commit e1b53a388e9cfcf870520a6899a37456cf1ae2c6)
+---
+ android/configs/android-base.cfg | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/android/configs/android-base.cfg b/android/configs/android-base.cfg
+index f10ed74..ef1f96d 100644
+--- a/android/configs/android-base.cfg
++++ b/android/configs/android-base.cfg
+@@ -136,6 +136,7 @@ CONFIG_PPP_BSDCOMP=y
+ CONFIG_PPP_DEFLATE=y
+ CONFIG_PPP_MPPE=y
+ CONFIG_PREEMPT=y
++CONFIG_QUOTA=y
+ CONFIG_RESOURCE_COUNTERS=y
+ CONFIG_RTC_CLASS=y
+ CONFIG_RT_GROUP_SCHED=y
+-- 
+1.9.1
+

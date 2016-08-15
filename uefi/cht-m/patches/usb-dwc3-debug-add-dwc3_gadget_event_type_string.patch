@@ -1,0 +1,67 @@
+From 8c6d9a1995946137b3d58819ba8793e00e897893 Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <balbi@ti.com>
+Date: Tue, 19 Aug 2014 16:49:20 -0500
+Subject: [PATCH 02/78] usb: dwc3: debug: add dwc3_gadget_event_type_string
+
+this new helper will return a pretty string for
+DWC3 Gadget Events.
+
+Signed-off-by: Felipe Balbi <balbi@ti.com>
+(cherry picked from commit e996061b9632d2ac7d00112208c644328c2411d5)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I48d0606c1a7896b10d1c817ed12d228609913828
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-29845
+Reviewed-on: https://android.intel.com:443/508767
+---
+ drivers/usb/dwc3/debug.h | 34 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 34 insertions(+)
+
+diff --git a/drivers/usb/dwc3/debug.h b/drivers/usb/dwc3/debug.h
+index e35a3d1..12ff4c9 100644
+--- a/drivers/usb/dwc3/debug.h
++++ b/drivers/usb/dwc3/debug.h
+@@ -180,6 +180,40 @@ static inline const char *dwc3_ep_event_string(u8 event)
+ 	return "UNKNOWN";
+ }
+ 
++/**
++ * dwc3_gadget_event_type_string - return event name
++ * @event: the event code
++ */
++static inline const char *dwc3_gadget_event_type_string(u8 event)
++{
++	switch (event) {
++	case DWC3_DEVICE_EVENT_DISCONNECT:
++		return "Disconnect";
++	case DWC3_DEVICE_EVENT_RESET:
++		return "Reset";
++	case DWC3_DEVICE_EVENT_CONNECT_DONE:
++		return "Connect Done";
++	case DWC3_DEVICE_EVENT_LINK_STATUS_CHANGE:
++		return "Link Status Change";
++	case DWC3_DEVICE_EVENT_WAKEUP:
++		return "Wake-Up";
++	case DWC3_DEVICE_EVENT_HIBER_REQ:
++		return "Hibernation";
++	case DWC3_DEVICE_EVENT_EOPF:
++		return "End of Periodic Frame";
++	case DWC3_DEVICE_EVENT_SOF:
++		return "Start of Frame";
++	case DWC3_DEVICE_EVENT_ERRATIC_ERROR:
++		return "Erratic Error";
++	case DWC3_DEVICE_EVENT_CMD_CMPL:
++		return "Command Complete";
++	case DWC3_DEVICE_EVENT_OVERFLOW:
++		return "Overflow";
++	default:
++		return "UNKNOWN";
++	}
++}
++
+ #ifdef CONFIG_DEBUG_FS
+ extern int dwc3_debugfs_init(struct dwc3 *);
+ extern void dwc3_debugfs_exit(struct dwc3 *);
+-- 
+1.9.1
+

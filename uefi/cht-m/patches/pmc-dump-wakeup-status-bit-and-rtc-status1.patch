@@ -1,0 +1,35 @@
+From afd3d53ff92cb9bbe73606536a2ddeb2e6c7363c Mon Sep 17 00:00:00 2001
+From: Zhang Yanmin <yanmin.zhang@intel.com>
+Date: Thu, 3 Mar 2016 10:07:32 +0800
+Subject: [PATCH 31/41] pmc: dump wakeup status bit and rtc status
+
+Sometimes, rtc in pmc might wake the system up when sleeping at s3.
+
+The patch dumps wakeup status bit to check it and other checkers
+if exist.
+
+Change-Id: I84e0057efb533638916d170d0dc4b086dcd73441
+Signed-off-by: Zhang Yanmin <yanmin.zhang@intel.com>
+Signed-off-by: Li Youx <youx.li@intel.com>
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-31683
+Reviewed-on: https://android.intel.com:443/479210
+Reviewed-on: https://android.intel.com:443/504769
+---
+ arch/x86/kernel/pmc_atom.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/x86/kernel/pmc_atom.c b/arch/x86/kernel/pmc_atom.c
+index 0cdadee..8630f75 100644
+--- a/arch/x86/kernel/pmc_atom.c
++++ b/arch/x86/kernel/pmc_atom.c
+@@ -25,6 +25,7 @@
+ #include <linux/uaccess.h>
+ #include <linux/suspend.h>
+ 
++#include <linux/syscore_ops.h>
+ #include <asm/pmc_atom.h>
+ #include <linux/syscore_ops.h>
+ 
+-- 
+1.9.1
+

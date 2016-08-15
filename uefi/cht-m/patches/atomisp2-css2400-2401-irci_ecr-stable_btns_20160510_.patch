@@ -1,0 +1,156 @@
+From 0542ace35f65188d12e8e3fe07fffb9209267aa3 Mon Sep 17 00:00:00 2001
+From: sys_icgvert <icgvert@intel.com>
+Date: Wed, 25 May 2016 12:35:00 -0700
+Subject: [PATCH 2/2] atomisp2:css2400&2401
+ irci_ecr-stable_btns_20160510_20160525_0600
+
+Merge CSS2.1 for css2400 and 2401_legacy pkg
+
+Change-Id: I5a9cf89d1d5b9e0f39f2564410a3a47f2c5eeb64
+FW: tag irci_ecr-stable_btns_20160510_20160525_0600
+Original-Tracked_On: https://jira01.devtools.intel.com/browse/IMINAN-50306
+Signed-off-by: sys_icgvert <icgvert@intel.com>
+Reviewed-on: https://icggerrit.ir.intel.com/123476
+Approver: SambathkumarX Chandrasekaran <sambathkumarx.chandrasekaran@intel.com>
+(cherry picked from commit 9c4d4013a1bcbea7cadea606028b9be2ca5b8c25)
+Reviewed-on: https://icggerrit.ir.intel.com/123529
+Build: Dessert M BXT RVP (SC)
+Build: Dessert M CHT FFD (SC)
+Validation-Android: Dessert M BXT RVP (SC)
+Approver: Fan F Yang <fan.f.yang@intel.com>
+Reviewed-by: Fan F Yang <fan.f.yang@intel.com>
+Integrator: WeiX Meng <weix.meng@intel.com>
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-32845
+Signed-off-by: Tao Wei <wei.tao@intel.com>
+Reviewed-on: https://android.intel.com:443/511964
+---
+ .../atomisp2/css/camera/pipe/src/pipe_binarydesc.c  |  6 +++---
+ .../camera/drivers/media/pci/atomisp2/css/ia_css.h  |  2 +-
+ .../drivers/media/pci/atomisp2/css/ia_css_types.h   |  2 +-
+ .../media/pci/atomisp2/css/ia_css_version_data.h    |  2 +-
+ .../css/isp/kernels/eed1_8/ia_css_eed1_8.host.c     | 21 +++++++++++++++++++++
+ .../css/isp/kernels/tdf/tdf_1.0/ia_css_tdf.host.c   |  1 -
+ .../media/pci/atomisp2/css/sh_css_firmware.c        |  4 ++--
+ 7 files changed, 29 insertions(+), 9 deletions(-)
+
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/camera/pipe/src/pipe_binarydesc.c b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/camera/pipe/src/pipe_binarydesc.c
+index f8eb4bc..e91d466 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/camera/pipe/src/pipe_binarydesc.c
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/camera/pipe/src/pipe_binarydesc.c
+@@ -767,9 +767,9 @@ void ia_css_pipe_get_post_gdc_binarydesc(
+ /* lookup table for ISP2.7 pre_de binaries */
+ static unsigned int pre_de_isp27_modes[MAX_NUM_PRE_DE_STAGES] =
+ {
+-	IA_CSS_BINARY_MODE_PRE_DE,
+-	IA_CSS_BINARY_MODE_PRE_DE_STAGE1,
+-	IA_CSS_BINARY_MODE_PRE_DE_STAGE2
++	IA_CSS_BINARY_MODE_PRE_DE,		/* Up to WB */
++	IA_CSS_BINARY_MODE_PRE_DE_STAGE1,	/* Up to TDF */
++	IA_CSS_BINARY_MODE_PRE_DE_STAGE2	/* Up to BNLM */
+ };
+ 
+ void ia_css_pipe_get_pre_de_binarydesc(
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css.h b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css.h
+index 933b80b..e4949f4 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css.h
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css.h
+@@ -1,4 +1,4 @@
+-/* Release Version: irci_ecr-master_20160505_1500 */
++/* Release Version: irci_ecr-stable_btns_20160510_20160525_0600 */
+ /**
+ Support for Intel Camera Imaging ISP subsystem.
+ Copyright (c) 2010 - 2015, Intel Corporation.
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_types.h b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_types.h
+index 91ea6f3..60fb1af 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_types.h
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_types.h
+@@ -1,4 +1,4 @@
+-/* Release Version: irci_ecr-master_20160505_1500 */
++/* Release Version: irci_ecr-stable_btns_20160510_20160525_0600 */
+ /**
+ Support for Intel Camera Imaging ISP subsystem.
+ Copyright (c) 2010 - 2015, Intel Corporation.
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_version_data.h b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_version_data.h
+index d62d458..e113587 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_version_data.h
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_version_data.h
+@@ -22,7 +22,7 @@ more details.
+ #define __IA_CSS_VERSION_DATA_H
+ 
+ 
+-#define CSS_VERSION_STRING "REL:20160505_18.4_1854; API:2.1.22.3; GIT:irci___#524c32413e531fc8858ddb38d92dd1a39f591479; SDK:; USER:viedifw; "
++#define CSS_VERSION_STRING "REL:20160525_21.3_1352; API:2.1.22.3; GIT:irci___#0be57a92914f849e8bb76d2b25d3d897338f8a1d; SDK:; USER:viedifw; "
+ 
+ 
+ #endif
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/kernels/eed1_8/ia_css_eed1_8.host.c b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/kernels/eed1_8/ia_css_eed1_8.host.c
+index 7710791..33b2c36 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/kernels/eed1_8/ia_css_eed1_8.host.c
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/kernels/eed1_8/ia_css_eed1_8.host.c
+@@ -279,6 +279,7 @@ ia_css_eed1_8_debug_dtrace(
+ 	const struct ia_css_eed1_8_config *eed,
+ 	unsigned level)
+ {
++	unsigned int i;
+ 	if (!eed)
+ 		return;
+ 
+@@ -316,6 +317,26 @@ ia_css_eed1_8_debug_dtrace(
+ 	ia_css_debug_dtrace(level, "\t%-32s = %d\n", "neg_margin0", eed->neg_margin0);
+ 	ia_css_debug_dtrace(level, "\t%-32s = %d\n", "neg_margin1", eed->neg_margin1);
+ 
++	ia_css_debug_dtrace(level, "\t%-32s = ", "dew_enhance_seg_x");
++	for (i = 0; i < IA_CSS_NUMBER_OF_DEW_ENHANCE_SEGMENTS; i++)
++		ia_css_debug_dtrace(level, "%d ", eed->dew_enhance_seg_x[i]);
++	ia_css_debug_dtrace(level, "\n");
++
++	ia_css_debug_dtrace(level, "\t%-32s = ", "dew_enhance_seg_y");
++	for (i = 0; i < IA_CSS_NUMBER_OF_DEW_ENHANCE_SEGMENTS; i++)
++		ia_css_debug_dtrace(level, "%d ", eed->dew_enhance_seg_y[i]);
++	ia_css_debug_dtrace(level, "\n");
++
++	ia_css_debug_dtrace(level, "\t%-32s = ", "dew_enhance_seg_slope");
++	for (i = 0; i < IA_CSS_NUMBER_OF_DEW_ENHANCE_SEGMENTS - 1; i++)
++		ia_css_debug_dtrace(level, "%d ", eed->dew_enhance_seg_slope[i]);
++	ia_css_debug_dtrace(level, "\n");
++
++	ia_css_debug_dtrace(level, "\t%-32s = ", "dew_enhance_seg_exp");
++	for (i = 0; i < IA_CSS_NUMBER_OF_DEW_ENHANCE_SEGMENTS - 1; i++)
++		ia_css_debug_dtrace(level, "%d ", eed->dew_enhance_seg_exp[i]);
++	ia_css_debug_dtrace(level, "\n");
++
+ 	ia_css_debug_dtrace(level, "\t%-32s = %d\n", "dedgew_max", eed->dedgew_max);
+ }
+ #endif
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/kernels/tdf/tdf_1.0/ia_css_tdf.host.c b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/kernels/tdf/tdf_1.0/ia_css_tdf.host.c
+index 7d44a7d..2494302 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/kernels/tdf/tdf_1.0/ia_css_tdf.host.c
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/kernels/tdf/tdf_1.0/ia_css_tdf.host.c
+@@ -125,7 +125,6 @@ ia_css_tdf_debug_dtrace(
+ 		}
+ 		ia_css_debug_dtrace(level, row == TDF_BLOCK_SIZE_Y - 1 ? "}\n" : "\n");
+ 	}
+-	ia_css_debug_dtrace(level, "\thres_detail_table\n");
+ 	ia_css_debug_dtrace(level, "\t%-18s = %4d\t%-18s = %4d\n",
+ 			    "epsilon_0", config->epsilon_0,
+ 			    "epsilon_1", config->epsilon_1);
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_firmware.c b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_firmware.c
+index 701f1ba..bfca8d5 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_firmware.c
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_firmware.c
+@@ -48,10 +48,10 @@ struct fw_param {
+ /* Warning: same order as SH_CSS_BINARY_ID_* */
+ static struct firmware_header *firmware_header;
+ 
+-/* The string STR(irci_ecr-master_20160505_1500) is a place holder
++/* The string STR(irci_ecr-stable_btns_20160510_20160525_0600) is a place holder
+  * which will be replaced with the actual RELEASE_VERSION
+  * during package generation. Please do not modify  */
+-static const char *release_version = STR(irci_ecr-master_20160505_1500);
++static const char *release_version = STR(irci_ecr-stable_btns_20160510_20160525_0600);
+ 
+ #define MAX_FW_REL_VER_NAME	300
+ static char FW_rel_ver_name[MAX_FW_REL_VER_NAME] = "---";
+-- 
+1.9.1
+

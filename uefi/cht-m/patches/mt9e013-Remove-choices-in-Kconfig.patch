@@ -1,0 +1,66 @@
+From f3d5d5c1f2a432537b88cd76a13c944437ab3d95 Mon Sep 17 00:00:00 2001
+From: haiqiang yao <haiqiangx.yao@intel.com>
+Date: Tue, 1 Mar 2016 15:53:04 +0800
+Subject: [PATCH 3/3] mt9e013:Remove choices in Kconfig
+
+This patch will remove choice in Kconfig and can fix a
+compiling warning issue.
+
+Change-Id: Ib84a71c6b9ecb7c029740485ef25b633c7477f46
+Original-Tracked_On: https://jira01.devtools.intel.com/browse/IMINAN-45606
+Signed-off-by: haiqiang yao <haiqiangx.yao@intel.com>
+Reviewed-on: https://icggerrit.ir.intel.com/104932
+Approver: Bin B Han <bin.b.han@intel.com>
+Reviewed-by: Bin B Han <bin.b.han@intel.com>
+Validation-Android: Wei Tao <wei.tao@intel.com>
+Integrator: WeiX Meng <weix.meng@intel.com>
+Reviewed-by: WeiX Meng <weix.meng@intel.com>
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-22356
+Signed-off-by: Tao Wei <wei.tao@intel.com>
+Reviewed-on: https://android.intel.com:443/477516
+---
+ drivers/external_drivers/camera/drivers/media/i2c/mt9e013/Kconfig | 8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/external_drivers/camera/drivers/media/i2c/mt9e013/Kconfig b/drivers/external_drivers/camera/drivers/media/i2c/mt9e013/Kconfig
+index a63b547..3edcc47d 100644
+--- a/drivers/external_drivers/camera/drivers/media/i2c/mt9e013/Kconfig
++++ b/drivers/external_drivers/camera/drivers/media/i2c/mt9e013/Kconfig
+@@ -8,12 +8,10 @@ config VIDEO_MT9E013
+ 	  It currently depends on internal V4L2 extensions defined in
+ 	  atomisp driver.
+ 
+-choice
+-	prompt "Select sensor settings"
+-	depends on VIDEO_MT9E013
+ 
+ config VIDEO_MT9E013_BLACKBAY
+ 	bool "MT9E013 settings for Blackbay"
++	depends on VIDEO_MT9E013
+ 	---help---
+ 	  Default mt9e013 sensor settings for Blackbay
+ 
+@@ -23,6 +21,7 @@ config VIDEO_MT9E013_BLACKBAY
+ 
+ config VIDEO_MT9E013_LEXINGTON
+ 	bool "MT9E013 settings for Lexington"
++	depends on VIDEO_MT9E013
+ 	---help---
+ 	  Default mt9e013 sensor settings for Lexington
+ 
+@@ -32,11 +31,10 @@ config VIDEO_MT9E013_LEXINGTON
+ 
+ config VIDEO_MT9E013_ENZO
+ 	bool "MT9E013 settings for Enzo"
++	depends on VIDEO_MT9E013
+ 	---help---
+ 	  Default mt9e013 sensor settings for Enzo
+ 
+ 	  For MT9E013 sensor and the sensor currently depends
+ 	  on internal V4L2 extensions defined in atomisp
+ 	  driver.
+-
+-endchoice
+-- 
+1.9.1
+

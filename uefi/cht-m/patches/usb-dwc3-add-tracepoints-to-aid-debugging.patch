@@ -1,0 +1,813 @@
+From b0aeb0f3ee0db5ee70544a61010c2d58cf3f40b7 Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <balbi@ti.com>
+Date: Wed, 30 Apr 2014 17:45:10 -0500
+Subject: [PATCH 04/78] usb: dwc3: add tracepoints to aid debugging
+
+When we're debugging hard-to-reproduce and time-sensitive
+use cases, printk() poses too much overhead. That's when
+the kernel's tracing infrastructure comes into play.
+
+This patch implements a few initial tracepoints for the
+dwc3 driver. More traces can be added as necessary in order
+to ease the task of debugging dwc3.
+
+Reviewed-by: Paul Zimmerman <paulz@synopsys.com>
+Signed-off-by: Felipe Balbi <balbi@ti.com>
+(cherry picked from commit 2c4cbe6e5a9c71408b496e00a78ea9284e98af16)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Conflicts:
+	drivers/usb/dwc3/core.h
+	drivers/usb/dwc3/gadget.c
+
+Change-Id: I379ccfcce7dda6dddc8e7f4c09d8ab9b3b32f3cc
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-29845
+Reviewed-on: https://android.intel.com:443/508180
+---
+ drivers/usb/dwc3/Makefile |   5 +-
+ drivers/usb/dwc3/core.h   |   4 +
+ drivers/usb/dwc3/debug.c  |  32 +++++++
+ drivers/usb/dwc3/debug.h  |   2 +
+ drivers/usb/dwc3/ep0.c    |  64 ++++++++------
+ drivers/usb/dwc3/gadget.c |  31 +++----
+ drivers/usb/dwc3/io.h     |  30 ++++++-
+ drivers/usb/dwc3/trace.c  |  19 ++++
+ drivers/usb/dwc3/trace.h  | 220 ++++++++++++++++++++++++++++++++++++++++++++++
+ 9 files changed, 360 insertions(+), 47 deletions(-)
+ create mode 100644 drivers/usb/dwc3/debug.c
+ create mode 100644 drivers/usb/dwc3/trace.c
+ create mode 100644 drivers/usb/dwc3/trace.h
+
+diff --git a/drivers/usb/dwc3/Makefile b/drivers/usb/dwc3/Makefile
+index 10ac3e7..7793e6c 100644
+--- a/drivers/usb/dwc3/Makefile
++++ b/drivers/usb/dwc3/Makefile
+@@ -1,9 +1,12 @@
++# define_trace.h needs to know how to find our header
++CFLAGS_trace.o				:= -I$(src)
++
+ ccflags-$(CONFIG_USB_DWC3_DEBUG)	:= -DDEBUG
+ ccflags-$(CONFIG_USB_DWC3_VERBOSE)	+= -DVERBOSE_DEBUG
+ 
+ obj-$(CONFIG_USB_DWC3)			+= dwc3.o
+ 
+-dwc3-y					:= core.o
++dwc3-y					:= core.o debug.o trace.o
+ 
+ ifneq ($(filter y,$(CONFIG_USB_DWC3_HOST) $(CONFIG_USB_DWC3_DUAL_ROLE)),)
+ 	dwc3-y				+= host.o
+diff --git a/drivers/usb/dwc3/core.h b/drivers/usb/dwc3/core.h
+index 7f712c2..079e1b2 100644
+--- a/drivers/usb/dwc3/core.h
++++ b/drivers/usb/dwc3/core.h
+@@ -32,6 +32,10 @@
+ #include <linux/usb/gadget.h>
+ #include <linux/usb/otg.h>
+ 
++#include <linux/phy/phy.h>
++
++#define DWC3_MSG_MAX	500
++
+ /* Global constants */
+ #define DWC3_EP0_BOUNCE_SIZE	512
+ #define DWC3_ENDPOINTS_NUM	32
+diff --git a/drivers/usb/dwc3/debug.c b/drivers/usb/dwc3/debug.c
+new file mode 100644
+index 0000000..0be6885
+--- /dev/null
++++ b/drivers/usb/dwc3/debug.c
+@@ -0,0 +1,32 @@
++/**
++ * debug.c - DesignWare USB3 DRD Controller Debug/Trace Support
++ *
++ * Copyright (C) 2014 Texas Instruments Incorporated - http://www.ti.com
++ *
++ * Author: Felipe Balbi <balbi@ti.com>
++ *
++ * This program is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2  of
++ * the License as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ */
++
++#include "debug.h"
++
++void dwc3_trace(void (*trace)(struct va_format *), const char *fmt, ...)
++{
++	struct va_format vaf;
++	va_list args;
++
++	va_start(args, fmt);
++	vaf.fmt = fmt;
++	vaf.va = &args;
++
++	trace(&vaf);
++
++	va_end(args);
++}
+diff --git a/drivers/usb/dwc3/debug.h b/drivers/usb/dwc3/debug.h
+index 12ff4c9..07fbc2d 100644
+--- a/drivers/usb/dwc3/debug.h
++++ b/drivers/usb/dwc3/debug.h
+@@ -214,6 +214,8 @@ static inline const char *dwc3_gadget_event_type_string(u8 event)
+ 	}
+ }
+ 
++void dwc3_trace(void (*trace)(struct va_format *), const char *fmt, ...);
++
+ #ifdef CONFIG_DEBUG_FS
+ extern int dwc3_debugfs_init(struct dwc3 *);
+ extern void dwc3_debugfs_exit(struct dwc3 *);
+diff --git a/drivers/usb/dwc3/ep0.c b/drivers/usb/dwc3/ep0.c
+index 8cc697b..50bdd3f 100644
+--- a/drivers/usb/dwc3/ep0.c
++++ b/drivers/usb/dwc3/ep0.c
+@@ -66,7 +66,7 @@ static int dwc3_ep0_start_trans(struct dwc3 *dwc, u8 epnum, dma_addr_t buf_dma,
+ 
+ 	dep = dwc->eps[epnum];
+ 	if (dep->flags & DWC3_EP_BUSY) {
+-		dev_vdbg(dwc->dev, "%s: still busy\n", dep->name);
++		dwc3_trace(trace_dwc3_ep0, "%s still busy", dep->name);
+ 		return 0;
+ 	}
+ 
+@@ -89,7 +89,8 @@ static int dwc3_ep0_start_trans(struct dwc3 *dwc, u8 epnum, dma_addr_t buf_dma,
+ 	ret = dwc3_send_gadget_ep_cmd(dwc, dep->number,
+ 			DWC3_DEPCMD_STARTTRANSFER, &params);
+ 	if (ret < 0) {
+-		dev_dbg(dwc->dev, "failed to send STARTTRANSFER command\n");
++		dwc3_trace(trace_dwc3_ep0, "%s STARTTRANSFER failed",
++				dep->name);
+ 		return ret;
+ 	}
+ 
+@@ -154,7 +155,8 @@ static int __dwc3_gadget_ep0_queue(struct dwc3_ep *dep,
+ 		if (dwc->ep0state == EP0_STATUS_PHASE)
+ 			__dwc3_ep0_do_control_status(dwc, dwc->eps[direction]);
+ 		else
+-			dev_dbg(dwc->dev, "too early for delayed status\n");
++			dwc3_trace(trace_dwc3_ep0,
++					"too early for delayed status");
+ 
+ 		return 0;
+ 	}
+@@ -218,7 +220,8 @@ int dwc3_gadget_ep0_queue(struct usb_ep *ep, struct usb_request *request,
+ 
+ 	spin_lock_irqsave(&dwc->lock, flags);
+ 	if (!dep->endpoint.desc) {
+-		dev_dbg(dwc->dev, "trying to queue request %p to disabled %s\n",
++		dwc3_trace(trace_dwc3_ep0,
++				"trying to queue request %p to disabled %s",
+ 				request, dep->name);
+ 		ret = -ESHUTDOWN;
+ 		goto out;
+@@ -230,7 +233,8 @@ int dwc3_gadget_ep0_queue(struct usb_ep *ep, struct usb_request *request,
+ 		goto out;
+ 	}
+ 
+-	dev_vdbg(dwc->dev, "queueing request %p to %s length %d, state '%s'\n",
++	dwc3_trace(trace_dwc3_ep0,
++			"queueing request %p to %s length %d state '%s'",
+ 			request, dep->name, request->length,
+ 			dwc3_ep0_state_string(dwc->ep0state));
+ 
+@@ -497,12 +501,13 @@ static int dwc3_ep0_set_address(struct dwc3 *dwc, struct usb_ctrlrequest *ctrl)
+ 
+ 	addr = le16_to_cpu(ctrl->wValue);
+ 	if (addr > 127) {
+-		dev_dbg(dwc->dev, "invalid device address %d\n", addr);
++		dwc3_trace(trace_dwc3_ep0, "invalid device address %d", addr);
+ 		return -EINVAL;
+ 	}
+ 
+ 	if (state == USB_STATE_CONFIGURED) {
+-		dev_dbg(dwc->dev, "trying to set address when configured\n");
++		dwc3_trace(trace_dwc3_ep0,
++				"trying to set address when configured");
+ 		return -EINVAL;
+ 	}
+ 
+@@ -570,7 +575,7 @@ static int dwc3_ep0_set_config(struct dwc3 *dwc, struct usb_ctrlrequest *ctrl)
+ 			dwc3_writel(dwc->regs, DWC3_DCTL, reg);
+ 
+ 			dwc->resize_fifos = true;
+-			dev_dbg(dwc->dev, "resize fifos flag SET\n");
++			dwc3_trace(trace_dwc3_ep0, "resize FIFOs flag SET");
+ 		}
+ 		break;
+ 
+@@ -696,31 +701,31 @@ static int dwc3_ep0_std_request(struct dwc3 *dwc, struct usb_ctrlrequest *ctrl)
+ 
+ 	switch (ctrl->bRequest) {
+ 	case USB_REQ_GET_STATUS:
+-		dev_vdbg(dwc->dev, "USB_REQ_GET_STATUS\n");
++		dwc3_trace(trace_dwc3_ep0, "USB_REQ_GET_STATUS\n");
+ 		ret = dwc3_ep0_handle_status(dwc, ctrl);
+ 		break;
+ 	case USB_REQ_CLEAR_FEATURE:
+-		dev_vdbg(dwc->dev, "USB_REQ_CLEAR_FEATURE\n");
++		dwc3_trace(trace_dwc3_ep0, "USB_REQ_CLEAR_FEATURE\n");
+ 		ret = dwc3_ep0_handle_feature(dwc, ctrl, 0);
+ 		break;
+ 	case USB_REQ_SET_FEATURE:
+-		dev_vdbg(dwc->dev, "USB_REQ_SET_FEATURE\n");
++		dwc3_trace(trace_dwc3_ep0, "USB_REQ_SET_FEATURE\n");
+ 		ret = dwc3_ep0_handle_feature(dwc, ctrl, 1);
+ 		break;
+ 	case USB_REQ_SET_ADDRESS:
+-		dev_vdbg(dwc->dev, "USB_REQ_SET_ADDRESS\n");
++		dwc3_trace(trace_dwc3_ep0, "USB_REQ_SET_ADDRESS\n");
+ 		ret = dwc3_ep0_set_address(dwc, ctrl);
+ 		break;
+ 	case USB_REQ_SET_CONFIGURATION:
+-		dev_vdbg(dwc->dev, "USB_REQ_SET_CONFIGURATION\n");
++		dwc3_trace(trace_dwc3_ep0, "USB_REQ_SET_CONFIGURATION\n");
+ 		ret = dwc3_ep0_set_config(dwc, ctrl);
+ 		break;
+ 	case USB_REQ_SET_SEL:
+-		dev_vdbg(dwc->dev, "USB_REQ_SET_SEL\n");
++		dwc3_trace(trace_dwc3_ep0, "USB_REQ_SET_SEL\n");
+ 		ret = dwc3_ep0_set_sel(dwc, ctrl);
+ 		break;
+ 	case USB_REQ_SET_ISOCH_DELAY:
+-		dev_vdbg(dwc->dev, "USB_REQ_SET_ISOCH_DELAY\n");
++		dwc3_trace(trace_dwc3_ep0, "USB_REQ_SET_ISOCH_DELAY\n");
+ 		ret = dwc3_ep0_set_isoch_delay(dwc, ctrl);
+ 		break;
+ 	case USB_REQ_SET_INTERFACE:
+@@ -728,7 +733,7 @@ static int dwc3_ep0_std_request(struct dwc3 *dwc, struct usb_ctrlrequest *ctrl)
+ 		dwc->start_config_issued = false;
+ 		/* Fall through */
+ 	default:
+-		dev_vdbg(dwc->dev, "Forwarding to gadget driver\n");
++		dwc3_trace(trace_dwc3_ep0, "Forwarding to gadget driver\n");
+ 		ret = dwc3_ep0_delegate_req(dwc, ctrl);
+ 		break;
+ 	}
+@@ -746,6 +751,8 @@ static void dwc3_ep0_inspect_setup(struct dwc3 *dwc,
+ 	if (!dwc->gadget_driver)
+ 		goto out;
+ 
++	trace_dwc3_ctrl_req(ctrl);
++
+ 	len = le16_to_cpu(ctrl->wLength);
+ 	if (!len) {
+ 		dwc->three_stage_setup = false;
+@@ -797,7 +804,7 @@ static void dwc3_ep0_complete_data(struct dwc3 *dwc,
+ 
+ 	status = DWC3_TRB_SIZE_TRBSTS(trb->size);
+ 	if (status == DWC3_TRBSTS_SETUP_PENDING) {
+-		dev_dbg(dwc->dev, "Setup Pending received\n");
++		dwc3_trace(trace_dwc3_ep0, "Setup Pending received");
+ 
+ 		if (r)
+ 			dwc3_gadget_giveback(ep0, r, -ECONNRESET);
+@@ -862,7 +869,7 @@ static void dwc3_ep0_complete_status(struct dwc3 *dwc,
+ 
+ 		ret = dwc3_gadget_set_test_mode(dwc, dwc->test_mode_nr);
+ 		if (ret < 0) {
+-			dev_dbg(dwc->dev, "Invalid Test #%d\n",
++			dwc3_trace(trace_dwc3_ep0, "Invalid Test #%d",
+ 					dwc->test_mode_nr);
+ 			dwc3_ep0_stall_and_restart(dwc);
+ 			return;
+@@ -871,7 +878,7 @@ static void dwc3_ep0_complete_status(struct dwc3 *dwc,
+ 
+ 	status = DWC3_TRB_SIZE_TRBSTS(trb->size);
+ 	if (status == DWC3_TRBSTS_SETUP_PENDING)
+-		dev_dbg(dwc->dev, "Setup Pending received\n");
++		dwc3_trace(trace_dwc3_ep0, "Setup Pending received\n");
+ 
+ 	dwc->ep0state = EP0_SETUP_PHASE;
+ 	dwc3_ep0_out_start(dwc);
+@@ -888,17 +895,17 @@ static void dwc3_ep0_xfer_complete(struct dwc3 *dwc,
+ 
+ 	switch (dwc->ep0state) {
+ 	case EP0_SETUP_PHASE:
+-		dev_vdbg(dwc->dev, "Inspecting Setup Bytes\n");
++		dwc3_trace(trace_dwc3_ep0, "Setup Phase");
+ 		dwc3_ep0_inspect_setup(dwc, event);
+ 		break;
+ 
+ 	case EP0_DATA_PHASE:
+-		dev_vdbg(dwc->dev, "Data Phase\n");
++		dwc3_trace(trace_dwc3_ep0, "Data Phase");
+ 		dwc3_ep0_complete_data(dwc, event);
+ 		break;
+ 
+ 	case EP0_STATUS_PHASE:
+-		dev_vdbg(dwc->dev, "Status Phase\n");
++		dwc3_trace(trace_dwc3_ep0, "Status Phase");
+ 		dwc3_ep0_complete_status(dwc, event);
+ 		break;
+ 	default:
+@@ -977,7 +984,7 @@ static int dwc3_ep0_start_control_status(struct dwc3_ep *dep)
+ static void __dwc3_ep0_do_control_status(struct dwc3 *dwc, struct dwc3_ep *dep)
+ {
+ 	if (dwc->resize_fifos) {
+-		dev_dbg(dwc->dev, "starting to resize fifos\n");
++		dwc3_trace(trace_dwc3_ep0, "Resizing FIFOs");
+ 		dwc3_gadget_resize_tx_fifos(dwc);
+ 		dwc->resize_fifos = 0;
+ 	}
+@@ -1018,7 +1025,7 @@ static void dwc3_ep0_xfernotready(struct dwc3 *dwc,
+ 
+ 	switch (event->status) {
+ 	case DEPEVT_STATUS_CONTROL_DATA:
+-		dev_vdbg(dwc->dev, "Control Data\n");
++		dwc3_trace(trace_dwc3_ep0, "Control Data");
+ 
+ 		/*
+ 		 * We already have a DATA transfer in the controller's cache,
+@@ -1032,7 +1039,8 @@ static void dwc3_ep0_xfernotready(struct dwc3 *dwc,
+ 		if (dwc->ep0_expect_in != event->endpoint_number) {
+ 			struct dwc3_ep	*dep = dwc->eps[dwc->ep0_expect_in];
+ 
+-			dev_vdbg(dwc->dev, "Wrong direction for Data phase\n");
++			dwc3_trace(trace_dwc3_ep0,
++					"Wrong direction for Data phase");
+ 			dwc3_ep0_end_control_data(dwc, dep);
+ 			dwc3_ep0_stall_and_restart(dwc);
+ 			return;
+@@ -1063,13 +1071,13 @@ static void dwc3_ep0_xfernotready(struct dwc3 *dwc,
+ 		if (dwc->ep0_next_event != DWC3_EP0_NRDY_STATUS)
+ 			return;
+ 
+-		dev_vdbg(dwc->dev, "Control Status\n");
++		dwc3_trace(trace_dwc3_ep0, "Control Status");
+ 
+ 		dwc->ep0state = EP0_STATUS_PHASE;
+ 
+ 		if (dwc->delayed_status) {
+ 			WARN_ON_ONCE(event->endpoint_number != 1);
+-			dev_vdbg(dwc->dev, "Mass Storage delayed status\n");
++			dwc3_trace(trace_dwc3_ep0, "Delayed Status");
+ 			return;
+ 		}
+ 
+@@ -1082,7 +1090,7 @@ void dwc3_ep0_interrupt(struct dwc3 *dwc,
+ {
+ 	u8			epnum = event->endpoint_number;
+ 
+-	dev_dbg(dwc->dev, "%s while ep%d%s in state '%s'\n",
++	dwc3_trace(trace_dwc3_ep0, "%s while ep%d%s in state '%s'",
+ 			dwc3_ep_event_string(event->endpoint_event),
+ 			epnum >> 1, (epnum & 1) ? "in" : "out",
+ 			dwc3_ep0_state_string(dwc->ep0state));
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index 4cb1f35..23966229a 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -256,6 +256,7 @@ void dwc3_gadget_giveback(struct dwc3_ep *dep, struct dwc3_request *req,
+ 	dev_dbg(dwc->dev, "request %p from %s completed %d/%d ===> %d\n",
+ 			req, dep->name, req->request.actual,
+ 			req->request.length, status);
++	trace_dwc3_gadget_giveback(req);
+ 
+ 	spin_unlock(&dwc->lock);
+ 	req->request.complete(&dep->endpoint, &req->request);
+@@ -267,6 +268,8 @@ int dwc3_send_gadget_generic_command(struct dwc3 *dwc, unsigned cmd, u32 param)
+ 	u32		timeout = 500;
+ 	u32		reg;
+ 
++	trace_dwc3_gadget_generic_cmd(cmd, param);
++
+ 	dwc3_writel(dwc->regs, DWC3_DGCMDPAR, param);
+ 	dwc3_writel(dwc->regs, DWC3_DGCMD, cmd | DWC3_DGCMD_CMDACT);
+ 
+@@ -299,10 +302,7 @@ int dwc3_send_gadget_ep_cmd(struct dwc3 *dwc, unsigned ep,
+ 	u32			reg;
+ 	u32			phycfg_val = 0;
+ 
+-	dev_vdbg(dwc->dev, "%s: cmd '%s' params %08x %08x %08x\n",
+-			dep->name,
+-			dwc3_gadget_ep_cmd_string(cmd), params->param0,
+-			params->param1, params->param2);
++	trace_dwc3_gadget_ep_cmd(dep, cmd, params);
+ 
+ 	dwc3_writel(dwc->regs, DWC3_DEPCMDPAR0(ep), params->param0);
+ 	dwc3_writel(dwc->regs, DWC3_DEPCMDPAR1(ep), params->param1);
+@@ -717,6 +717,8 @@ static struct usb_request *dwc3_gadget_ep_alloc_request(struct usb_ep *ep,
+ 	req->epnum	= dep->number;
+ 	req->dep	= dep;
+ 
++	trace_dwc3_alloc_request(req);
++
+ 	return &req->request;
+ }
+ 
+@@ -725,6 +727,7 @@ static void dwc3_gadget_ep_free_request(struct usb_ep *ep,
+ {
+ 	struct dwc3_request		*req = to_dwc3_request(request);
+ 
++	trace_dwc3_free_request(req);
+ 	kfree(req);
+ }
+ 
+@@ -806,6 +809,8 @@ static void dwc3_prepare_one_trb(struct dwc3_ep *dep,
+ 		trb->ctrl |= DWC3_TRB_CTRL_SID_SOFN(req->request.stream_id);
+ 
+ 	trb->ctrl |= DWC3_TRB_CTRL_HWO;
++
++	trace_dwc3_prepare_trb(dep, trb);
+ }
+ 
+ /*
+@@ -1187,6 +1192,7 @@ static int dwc3_gadget_ep_queue(struct usb_ep *ep, struct usb_request *request,
+ 
+ 	dev_vdbg(dwc->dev, "queing request %p to %s length %d\n",
+ 			request, ep->name, request->length);
++	trace_dwc3_ep_queue(req);
+ 
+ 	ret = __dwc3_gadget_ep_queue(dep, req);
+ 	spin_unlock_irqrestore(&dwc->lock, flags);
+@@ -1207,6 +1213,8 @@ static int dwc3_gadget_ep_dequeue_forced(struct usb_ep *ep,
+ 	unsigned long			flags;
+ 	int				ret = 0;
+ 
++	trace_dwc3_ep_dequeue(req);
++
+ 	spin_lock_irqsave(&dwc->lock, flags);
+ 
+ 	list_for_each_entry(r, &dep->request_list, list) {
+@@ -1926,6 +1934,8 @@ static int __dwc3_cleanup_done_trbs(struct dwc3 *dwc, struct dwc3_ep *dep,
+ 	unsigned int		s_pkt = 0;
+ 	unsigned int		trb_status;
+ 
++	trace_dwc3_complete_trb(dep, trb);
++
+ 	if ((trb->ctrl & DWC3_TRB_CTRL_HWO) && status != -ESHUTDOWN)
+ 		/*
+ 		 * We continue despite the error. There is not much we
+@@ -2103,9 +2113,6 @@ static void dwc3_endpoint_interrupt(struct dwc3 *dwc,
+ 	if (!(dep->flags & DWC3_EP_ENABLED))
+ 		return;
+ 
+-	dev_vdbg(dwc->dev, "%s: %s\n", dep->name,
+-			dwc3_ep_event_string(event->endpoint_event));
+-
+ 	if (epnum == 0 || epnum == 1) {
+ 		dwc3_ep0_interrupt(dwc, event);
+ 		return;
+@@ -2297,8 +2304,6 @@ static void dwc3_gadget_disconnect_interrupt(struct dwc3 *dwc)
+ {
+ 	int			reg;
+ 
+-	dev_vdbg(dwc->dev, "%s\n", __func__);
+-
+ 	reg = dwc3_readl(dwc->regs, DWC3_DCTL);
+ 	reg &= ~DWC3_DCTL_INITU1ENA;
+ 	dwc3_writel(dwc->regs, DWC3_DCTL, reg);
+@@ -2324,8 +2329,6 @@ static void dwc3_gadget_reset_interrupt(struct dwc3 *dwc)
+ {
+ 	u32			reg;
+ 
+-	dev_vdbg(dwc->dev, "%s\n", __func__);
+-
+ 	/*
+ 	 * WORKAROUND: DWC3 revisions <1.88a have an issue which
+ 	 * would cause a missing Disconnect Event if there's a
+@@ -2433,8 +2436,6 @@ static void dwc3_gadget_conndone_interrupt(struct dwc3 *dwc)
+ 	u32			reg;
+ 	u8			speed;
+ 
+-	dev_vdbg(dwc->dev, "%s\n", __func__);
+-
+ 	reg = dwc3_readl(dwc->regs, DWC3_DSTS);
+ 	speed = reg & DWC3_DSTS_CONNECTSPD;
+ 	dwc->speed = speed;
+@@ -2534,8 +2535,6 @@ static void dwc3_gadget_conndone_interrupt(struct dwc3 *dwc)
+ 
+ static void dwc3_gadget_wakeup_interrupt(struct dwc3 *dwc)
+ {
+-	dev_vdbg(dwc->dev, "%s\n", __func__);
+-
+ 	/*
+ 	 * TODO take core out of low power mode when that's
+ 	 * implemented.
+@@ -2686,6 +2685,8 @@ static void dwc3_gadget_interrupt(struct dwc3 *dwc,
+ static void dwc3_process_event_entry(struct dwc3 *dwc,
+ 		const union dwc3_event *event)
+ {
++	trace_dwc3_event(event->raw);
++
+ 	/* Endpoint IRQ, handle it and return early */
+ 	if (event->type.is_devspec == 0) {
+ 		/* depevt */
+diff --git a/drivers/usb/dwc3/io.h b/drivers/usb/dwc3/io.h
+index d94441c..6a79c8e 100644
+--- a/drivers/usb/dwc3/io.h
++++ b/drivers/usb/dwc3/io.h
+@@ -20,27 +20,51 @@
+ #define __DRIVERS_USB_DWC3_IO_H
+ 
+ #include <linux/io.h>
+-
++#include "trace.h"
++#include "debug.h"
+ #include "core.h"
+ 
+ static inline u32 dwc3_readl(void __iomem *base, u32 offset)
+ {
++	u32 offs = offset - DWC3_GLOBALS_REGS_START;
++	u32 value;
++
+ 	/*
+ 	 * We requested the mem region starting from the Globals address
+ 	 * space, see dwc3_probe in core.c.
+ 	 * However, the offsets are given starting from xHCI address space.
+ 	 */
+-	return readl(base + (offset - DWC3_GLOBALS_REGS_START));
++	value = readl(base + offs);
++
++	/*
++	 * When tracing we want to make it easy to find the correct address on
++	 * documentation, so we revert it back to the proper addresses, the
++	 * same way they are described on SNPS documentation
++	 */
++	dwc3_trace(trace_dwc3_readl, "addr %p value %08x",
++			base - DWC3_GLOBALS_REGS_START + offset, value);
++
++	return value;
+ }
+ 
+ static inline void dwc3_writel(void __iomem *base, u32 offset, u32 value)
+ {
++	u32 offs = offset - DWC3_GLOBALS_REGS_START;
++
+ 	/*
+ 	 * We requested the mem region starting from the Globals address
+ 	 * space, see dwc3_probe in core.c.
+ 	 * However, the offsets are given starting from xHCI address space.
+ 	 */
+-	writel(value, base + (offset - DWC3_GLOBALS_REGS_START));
++	writel(value, base + offs);
++
++	/*
++	 * When tracing we want to make it easy to find the correct address on
++	 * documentation, so we revert it back to the proper addresses, the
++	 * same way they are described on SNPS documentation
++	 */
++	dwc3_trace(trace_dwc3_writel, "addr %p value %08x",
++			base - DWC3_GLOBALS_REGS_START + offset, value);
+ }
+ 
+ #endif /* __DRIVERS_USB_DWC3_IO_H */
+diff --git a/drivers/usb/dwc3/trace.c b/drivers/usb/dwc3/trace.c
+new file mode 100644
+index 0000000..6cd1664
+--- /dev/null
++++ b/drivers/usb/dwc3/trace.c
+@@ -0,0 +1,19 @@
++/**
++ * trace.c - DesignWare USB3 DRD Controller Trace Support
++ *
++ * Copyright (C) 2014 Texas Instruments Incorporated - http://www.ti.com
++ *
++ * Author: Felipe Balbi <balbi@ti.com>
++ *
++ * This program is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2  of
++ * the License as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ */
++
++#define CREATE_TRACE_POINTS
++#include "trace.h"
+diff --git a/drivers/usb/dwc3/trace.h b/drivers/usb/dwc3/trace.h
+new file mode 100644
+index 0000000..78aff1d
+--- /dev/null
++++ b/drivers/usb/dwc3/trace.h
+@@ -0,0 +1,220 @@
++/**
++ * trace.h - DesignWare USB3 DRD Controller Trace Support
++ *
++ * Copyright (C) 2014 Texas Instruments Incorporated - http://www.ti.com
++ *
++ * Author: Felipe Balbi <balbi@ti.com>
++ *
++ * This program is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2  of
++ * the License as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ */
++
++#undef TRACE_SYSTEM
++#define TRACE_SYSTEM dwc3
++
++#if !defined(__DWC3_TRACE_H) || defined(TRACE_HEADER_MULTI_READ)
++#define __DWC3_TRACE_H
++
++#include <linux/types.h>
++#include <linux/tracepoint.h>
++#include <asm/byteorder.h>
++#include "core.h"
++#include "debug.h"
++
++DECLARE_EVENT_CLASS(dwc3_log_msg,
++	TP_PROTO(struct va_format *vaf),
++	TP_ARGS(vaf),
++	TP_STRUCT__entry(__dynamic_array(char, msg, DWC3_MSG_MAX)),
++	TP_fast_assign(
++		vsnprintf(__get_str(msg), DWC3_MSG_MAX, vaf->fmt, *vaf->va);
++	),
++	TP_printk("%s", __get_str(msg))
++);
++
++DEFINE_EVENT(dwc3_log_msg, dwc3_readl,
++	TP_PROTO(struct va_format *vaf),
++	TP_ARGS(vaf)
++);
++
++DEFINE_EVENT(dwc3_log_msg, dwc3_writel,
++	TP_PROTO(struct va_format *vaf),
++	TP_ARGS(vaf)
++);
++
++DEFINE_EVENT(dwc3_log_msg, dwc3_ep0,
++	TP_PROTO(struct va_format *vaf),
++	TP_ARGS(vaf)
++);
++
++DECLARE_EVENT_CLASS(dwc3_log_event,
++	TP_PROTO(u32 event),
++	TP_ARGS(event),
++	TP_STRUCT__entry(
++		__field(u32, event)
++	),
++	TP_fast_assign(
++		__entry->event = event;
++	),
++	TP_printk("event %08x\n", __entry->event)
++);
++
++DEFINE_EVENT(dwc3_log_event, dwc3_event,
++	TP_PROTO(u32 event),
++	TP_ARGS(event)
++);
++
++DECLARE_EVENT_CLASS(dwc3_log_ctrl,
++	TP_PROTO(struct usb_ctrlrequest *ctrl),
++	TP_ARGS(ctrl),
++	TP_STRUCT__entry(
++		__field(struct usb_ctrlrequest *, ctrl)
++	),
++	TP_fast_assign(
++		__entry->ctrl = ctrl;
++	),
++	TP_printk("bRequestType %02x bRequest %02x wValue %04x wIndex %04x wLength %d",
++		__entry->ctrl->bRequestType, __entry->ctrl->bRequest,
++		le16_to_cpu(__entry->ctrl->wValue), le16_to_cpu(__entry->ctrl->wIndex),
++		le16_to_cpu(__entry->ctrl->wLength)
++	)
++);
++
++DEFINE_EVENT(dwc3_log_ctrl, dwc3_ctrl_req,
++	TP_PROTO(struct usb_ctrlrequest *ctrl),
++	TP_ARGS(ctrl)
++);
++
++DECLARE_EVENT_CLASS(dwc3_log_request,
++	TP_PROTO(struct dwc3_request *req),
++	TP_ARGS(req),
++	TP_STRUCT__entry(
++		__field(struct dwc3_request *, req)
++	),
++	TP_fast_assign(
++		__entry->req = req;
++	),
++	TP_printk("%s: req %p length %u/%u ==> %d",
++		__entry->req->dep->name, __entry->req,
++		__entry->req->request.actual, __entry->req->request.length,
++		__entry->req->request.status
++	)
++);
++
++DEFINE_EVENT(dwc3_log_request, dwc3_alloc_request,
++	TP_PROTO(struct dwc3_request *req),
++	TP_ARGS(req)
++);
++
++DEFINE_EVENT(dwc3_log_request, dwc3_free_request,
++	TP_PROTO(struct dwc3_request *req),
++	TP_ARGS(req)
++);
++
++DEFINE_EVENT(dwc3_log_request, dwc3_ep_queue,
++	TP_PROTO(struct dwc3_request *req),
++	TP_ARGS(req)
++);
++
++DEFINE_EVENT(dwc3_log_request, dwc3_ep_dequeue,
++	TP_PROTO(struct dwc3_request *req),
++	TP_ARGS(req)
++);
++
++DEFINE_EVENT(dwc3_log_request, dwc3_gadget_giveback,
++	TP_PROTO(struct dwc3_request *req),
++	TP_ARGS(req)
++);
++
++DECLARE_EVENT_CLASS(dwc3_log_generic_cmd,
++	TP_PROTO(unsigned int cmd, u32 param),
++	TP_ARGS(cmd, param),
++	TP_STRUCT__entry(
++		__field(unsigned int, cmd)
++		__field(u32, param)
++	),
++	TP_fast_assign(
++		__entry->cmd = cmd;
++		__entry->param = param;
++	),
++	TP_printk("cmd '%s' [%d] param %08x\n",
++		dwc3_gadget_generic_cmd_string(__entry->cmd),
++		__entry->cmd, __entry->param
++	)
++);
++
++DEFINE_EVENT(dwc3_log_generic_cmd, dwc3_gadget_generic_cmd,
++	TP_PROTO(unsigned int cmd, u32 param),
++	TP_ARGS(cmd, param)
++);
++
++DECLARE_EVENT_CLASS(dwc3_log_gadget_ep_cmd,
++	TP_PROTO(struct dwc3_ep *dep, unsigned int cmd,
++		struct dwc3_gadget_ep_cmd_params *params),
++	TP_ARGS(dep, cmd, params),
++	TP_STRUCT__entry(
++		__field(struct dwc3_ep *, dep)
++		__field(unsigned int, cmd)
++		__field(struct dwc3_gadget_ep_cmd_params *, params)
++	),
++	TP_fast_assign(
++		__entry->dep = dep;
++		__entry->cmd = cmd;
++		__entry->params = params;
++	),
++	TP_printk("%s: cmd '%s' [%d] params %08x %08x %08x\n",
++		__entry->dep->name, dwc3_gadget_ep_cmd_string(__entry->cmd),
++		__entry->cmd, __entry->params->param0,
++		__entry->params->param1, __entry->params->param2
++	)
++);
++
++DEFINE_EVENT(dwc3_log_gadget_ep_cmd, dwc3_gadget_ep_cmd,
++	TP_PROTO(struct dwc3_ep *dep, unsigned int cmd,
++		struct dwc3_gadget_ep_cmd_params *params),
++	TP_ARGS(dep, cmd, params)
++);
++
++DECLARE_EVENT_CLASS(dwc3_log_trb,
++	TP_PROTO(struct dwc3_ep *dep, struct dwc3_trb *trb),
++	TP_ARGS(dep, trb),
++	TP_STRUCT__entry(
++		__field(struct dwc3_ep *, dep)
++		__field(struct dwc3_trb *, trb)
++	),
++	TP_fast_assign(
++		__entry->dep = dep;
++		__entry->trb = trb;
++	),
++	TP_printk("%s: trb %p bph %08x bpl %08x size %08x ctrl %08x\n",
++		__entry->dep->name, __entry->trb, __entry->trb->bph,
++		__entry->trb->bpl, __entry->trb->size, __entry->trb->ctrl
++	)
++);
++
++DEFINE_EVENT(dwc3_log_trb, dwc3_prepare_trb,
++	TP_PROTO(struct dwc3_ep *dep, struct dwc3_trb *trb),
++	TP_ARGS(dep, trb)
++);
++
++DEFINE_EVENT(dwc3_log_trb, dwc3_complete_trb,
++	TP_PROTO(struct dwc3_ep *dep, struct dwc3_trb *trb),
++	TP_ARGS(dep, trb)
++);
++
++#endif /* __DWC3_TRACE_H */
++
++/* this part has to be here */
++
++#undef TRACE_INCLUDE_PATH
++#define TRACE_INCLUDE_PATH .
++
++#undef TRACE_INCLUDE_FILE
++#define TRACE_INCLUDE_FILE trace
++
++#include <trace/define_trace.h>
+-- 
+1.9.1
+

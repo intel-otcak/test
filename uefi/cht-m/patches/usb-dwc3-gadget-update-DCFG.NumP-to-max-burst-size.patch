@@ -1,0 +1,76 @@
+From 59894c2b0aeae98e017c738683891389f8fb4da5 Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <felipe.balbi@linux.intel.com>
+Date: Tue, 26 Apr 2016 10:49:07 +0300
+Subject: [PATCH 69/78] usb: dwc3: gadget: update DCFG.NumP to max burst size
+
+NumP field of DCFG register is used on NumP field of
+ACK TP header and it tells the host how many packets
+an endpoint can receive before waiting for
+synchronization.
+
+Documentation says it should be set to anything
+<=bMaxBurst. Interestingly, however, this setting is
+not per-endpoint how it should be (different
+endpoints could have different burst sizes), but
+things seem to work okay right now.
+
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit 676e3497448177bdb1934cbc4402f921730a5864)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Conflicts:
+	drivers/usb/dwc3/gadget.c
+
+Change-Id: Ib9f687b8b799185411d3fb97a2418dfe0c5e42e7
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-19337
+Reviewed-on: https://android.intel.com:443/511194
+---
+ drivers/usb/dwc3/core.h   |  3 +++
+ drivers/usb/dwc3/gadget.c | 16 +++++++++++++---
+ 2 files changed, 16 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/usb/dwc3/core.h b/drivers/usb/dwc3/core.h
+index f26f53c..d506215 100644
+--- a/drivers/usb/dwc3/core.h
++++ b/drivers/usb/dwc3/core.h
+@@ -213,6 +213,9 @@
+ #define DWC3_DCFG_LOWSPEED	(2 << 0)
+ #define DWC3_DCFG_FULLSPEED1	(3 << 0)
+ 
++#define DWC3_DCFG_NUMP_SHIFT	17
++#define DWC3_DCFG_NUMP(n)	(((n) & 0x1f) >> DWC3_DCFG_NUMP_SHIFT)
++#define DWC3_DCFG_NUMP_MASK	(0x1f << DWC3_DCFG_NUMP_SHIFT)
+ #define DWC3_DCFG_LPM_CAP	(1 << 22)
+ 
+ /* Device Control Register */
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index e273668..6a6948d 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -480,10 +480,20 @@ static int dwc3_gadget_set_ep_config(struct dwc3 *dwc, struct dwc3_ep *dep,
+ 		| DWC3_DEPCFG_MAX_PACKET_SIZE(usb_endpoint_maxp(desc));
+ 
+ 	/* Burst size is only needed in SuperSpeed mode */
+-	if (dwc->gadget.speed == USB_SPEED_SUPER) {
+-		u32 burst = dep->endpoint.maxburst - 1;
++	if (dwc->gadget.speed >= USB_SPEED_SUPER) {
++		u32 burst = dep->endpoint.maxburst;
++		u32 nump;
++		u32 reg;
+ 
+-		params.param0 |= DWC3_DEPCFG_BURST_SIZE(burst);
++		/* update NumP */
++		reg = dwc3_readl(dwc->regs, DWC3_DCFG);
++		nump = DWC3_DCFG_NUMP(reg);
++		nump = max(nump, burst);
++		reg &= ~DWC3_DCFG_NUMP_MASK;
++		reg |= nump << DWC3_DCFG_NUMP_SHIFT;
++		dwc3_writel(dwc->regs, DWC3_DCFG, reg);
++
++		params.param0 |= DWC3_DEPCFG_BURST_SIZE(burst - 1);
+ 	}
+ 
+ 	if (ignore)
+-- 
+1.9.1
+

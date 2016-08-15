@@ -1,0 +1,72 @@
+From 782d70fcb2960e655be8332bd00b8ad7df36dfb1 Mon Sep 17 00:00:00 2001
+From: Rasmus Villemoes <linux@rasmusvillemoes.dk>
+Date: Thu, 25 Jun 2015 15:02:22 -0700
+Subject: [PATCH 729/769] UPSTREAM: lib/string.c: introduce strreplace()
+
+Strings are sometimes sanitized by replacing a certain character (often
+'/') by another (often '!').  In a few places, this is done the same way
+Schlemiel the Painter would do it.  Others are slightly smarter but still
+do multiple strchr() calls.  Introduce strreplace() to do this using a
+single function call and a single pass over the string.
+
+One would expect the return value to be one of three things: void, s, or
+the number of replacements made.  I chose the fourth, returning a pointer
+to the end of the string.  This is more likely to be useful (for example
+allowing the caller to avoid a strlen call).
+
+BUG: 27175947
+
+Signed-off-by: Rasmus Villemoes <linux@rasmusvillemoes.dk>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: Neil Brown <neilb@suse.de>
+Cc: Steven Rostedt <rostedt@goodmis.org>
+Cc: Joe Perches <joe@perches.com>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+Change-Id: I1ddb88534a189f2e78ae1b5b074c0662781c7665
+---
+ include/linux/string.h |  1 +
+ lib/string.c           | 17 +++++++++++++++++
+ 2 files changed, 18 insertions(+)
+
+diff --git a/include/linux/string.h b/include/linux/string.h
+index ac889c5..3eaf2f4 100644
+--- a/include/linux/string.h
++++ b/include/linux/string.h
+@@ -111,6 +111,7 @@ extern int memcmp(const void *,const void *,__kernel_size_t);
+ extern void * memchr(const void *,int,__kernel_size_t);
+ #endif
+ void *memchr_inv(const void *s, int c, size_t n);
++char *strreplace(char *s, char old, char new);
+ 
+ extern char *kstrdup(const char *s, gfp_t gfp);
+ extern char *kstrndup(const char *s, size_t len, gfp_t gfp);
+diff --git a/lib/string.c b/lib/string.c
+index e5878de..3e561a8 100644
+--- a/lib/string.c
++++ b/lib/string.c
+@@ -824,3 +824,20 @@ void *memchr_inv(const void *start, int c, size_t bytes)
+ 	return check_bytes8(start, value, bytes % 8);
+ }
+ EXPORT_SYMBOL(memchr_inv);
++
++/**
++ * strreplace - Replace all occurrences of character in string.
++ * @s: The string to operate on.
++ * @old: The character being replaced.
++ * @new: The character @old is replaced with.
++ *
++ * Returns pointer to the nul byte at the end of @s.
++ */
++char *strreplace(char *s, char old, char new)
++{
++	for (; *s; ++s)
++		if (*s == old)
++			*s = new;
++	return s;
++}
++EXPORT_SYMBOL(strreplace);
+-- 
+1.9.1
+

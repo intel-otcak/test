@@ -1,0 +1,47 @@
+From 22eb57dfa730a849629746763940d969acb06c31 Mon Sep 17 00:00:00 2001
+From: Witold Sciuk <witold.sciuk@intel.com>
+Date: Sat, 13 Feb 2016 11:08:37 +0100
+Subject: [PATCH] usb: gadget: f_mtp: Set 0xFFFFFFFF in mtp header
+ ContainerLength field
+
+Value 0xFFFFFFFF should be set according specification
+of MTP for large files when fileSize + mtpHeader is greater
+than 0xFFFFFFFF.
+MTP Specification, Appendix H - USB Optimizations
+
+Change-Id: Ifbabc9c05b3f92c5c380beedd23175411c0e7aee
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-7277
+Signed-off-by: Witold Sciuk <witold.sciuk@intel.com>
+Reviewed-on: https://android.intel.com:443/470040
+---
+ drivers/usb/gadget/f_mtp.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/usb/gadget/f_mtp.c b/drivers/usb/gadget/f_mtp.c
+index 31b5cf1..712a171 100644
+--- a/drivers/usb/gadget/f_mtp.c
++++ b/drivers/usb/gadget/f_mtp.c
+@@ -47,6 +47,7 @@
+ 
+ #define INTR_BUFFER_SIZE           28
+ #define MAX_INST_NAME_LEN          40
++#define MTP_MAX_FILE_SIZE			0xFFFFFFFFL
+ 
+ /* String IDs */
+ #define INTERFACE_STRING_INDEX	0
+@@ -787,7 +788,11 @@ static void send_file_work(struct work_struct *data)
+ 		if (hdr_size) {
+ 			/* prepend MTP data header */
+ 			header = (struct mtp_data_header *)req->buf;
+-			header->length = __cpu_to_le32(count);
++
++			/*set file size with header 
++			 according MTP Specification*/
++			header->length = (count > MTP_MAX_FILE_SIZE) ?
++					MTP_MAX_FILE_SIZE : __cpu_to_le32(count);
+ 			header->type = __cpu_to_le16(2); /* data packet */
+ 			header->command = __cpu_to_le16(dev->xfer_command);
+ 			header->transaction_id =
+-- 
+1.9.1
+

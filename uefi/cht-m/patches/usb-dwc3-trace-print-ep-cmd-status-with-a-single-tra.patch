@@ -1,0 +1,137 @@
+From 5dc86e5cf9a94e4cd9ba2624d24d86837fab174a Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <felipe.balbi@linux.intel.com>
+Date: Mon, 23 May 2016 14:02:33 +0300
+Subject: [PATCH 18/41] usb: dwc3: trace: print ep cmd status with a single
+ trace
+
+Instead of printing command's status with a separate
+trace printout, let's print it within a single call.
+
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit 0933df159c5c82f97c6bb811b149fa1158a26087)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I76b5abdf9e3815d3ae80c963afef90bbd72e81bf
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34814
+Reviewed-on: https://android.intel.com:443/519788
+---
+ drivers/usb/dwc3/debug.h  | 16 ++++++++++++++++
+ drivers/usb/dwc3/gadget.c |  8 +++++---
+ drivers/usb/dwc3/trace.h  | 15 +++++++++------
+ 3 files changed, 30 insertions(+), 9 deletions(-)
+
+diff --git a/drivers/usb/dwc3/debug.h b/drivers/usb/dwc3/debug.h
+index c74e2f7..b31e8f2 100644
+--- a/drivers/usb/dwc3/debug.h
++++ b/drivers/usb/dwc3/debug.h
+@@ -280,6 +280,22 @@ static inline const char *dwc3_decode_event(u32 event)
+ 		return dwc3_ep_event_string(&evt.depevt);
+ }
+ 
++static inline const char *dwc3_ep_cmd_status_string(int status)
++{
++	switch (status) {
++	case -ETIMEDOUT:
++		return "Timed Out";
++	case 0:
++		return "Successful";
++	case DEPEVT_TRANSFER_NO_RESOURCE:
++		return "No Resource";
++	case DEPEVT_TRANSFER_BUS_EXPIRY:
++		return "Bus Expiry";
++	default:
++		return "UNKNOWN";
++	}
++}
++
+ void dwc3_trace(void (*trace)(struct va_format *), const char *fmt, ...);
+ 
+ #ifdef CONFIG_DEBUG_FS
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index 92d43fe..68ca83d 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -318,11 +318,10 @@ int dwc3_send_gadget_ep_cmd(struct dwc3_ep *dep, unsigned cmd,
+ 	u32			timeout = 500;
+ 	u32			reg;
+ 
++	int			cmd_status = 0;
+ 	int			susphy = false;
+ 	int			ret = -EINVAL;
+ 
+-	trace_dwc3_gadget_ep_cmd(dep, cmd, params);
+-
+ 	/*
+ 	 * Synopsys Databook 2.60a states, on section 6.3.2.5.[1-8], that if
+ 	 * we're issuing an endpoint command, we must check if
+@@ -362,7 +361,7 @@ int dwc3_send_gadget_ep_cmd(struct dwc3_ep *dep, unsigned cmd,
+ 	do {
+ 		reg = dwc3_readl(dep->regs, DWC3_DEPCMD);
+ 		if (!(reg & DWC3_DEPCMD_CMDACT)) {
+-			int cmd_status = DWC3_DEPCMD_STATUS(reg);
++			cmd_status = DWC3_DEPCMD_STATUS(reg);
+ 
+ 			dwc3_trace(trace_dwc3_gadget,
+ 					"Command Complete --> %d",
+@@ -403,8 +402,11 @@ int dwc3_send_gadget_ep_cmd(struct dwc3_ep *dep, unsigned cmd,
+ 		dwc3_trace(trace_dwc3_gadget,
+ 				"Command Timed Out");
+ 		ret = -ETIMEDOUT;
++		cmd_status = -ETIMEDOUT;
+ 	}
+ 
++	trace_dwc3_gadget_ep_cmd(dep, cmd, params, cmd_status);
++
+ 	if (unlikely(susphy)) {
+ 		reg = dwc3_readl(dwc->regs, DWC3_GUSB2PHYCFG(0));
+ 		reg |= DWC3_GUSB2PHYCFG_SUSPHY;
+diff --git a/drivers/usb/dwc3/trace.h b/drivers/usb/dwc3/trace.h
+index 659cc9b..d179250 100644
+--- a/drivers/usb/dwc3/trace.h
++++ b/drivers/usb/dwc3/trace.h
+@@ -190,14 +190,15 @@ DEFINE_EVENT(dwc3_log_generic_cmd, dwc3_gadget_generic_cmd,
+ 
+ DECLARE_EVENT_CLASS(dwc3_log_gadget_ep_cmd,
+ 	TP_PROTO(struct dwc3_ep *dep, unsigned int cmd,
+-		struct dwc3_gadget_ep_cmd_params *params),
+-	TP_ARGS(dep, cmd, params),
++		struct dwc3_gadget_ep_cmd_params *params, int cmd_status),
++	TP_ARGS(dep, cmd, params, cmd_status),
+ 	TP_STRUCT__entry(
+ 		__dynamic_array(char, name, DWC3_MSG_MAX)
+ 		__field(unsigned int, cmd)
+ 		__field(u32, param0)
+ 		__field(u32, param1)
+ 		__field(u32, param2)
++		__field(int, cmd_status)
+ 	),
+ 	TP_fast_assign(
+ 		snprintf(__get_str(name), DWC3_MSG_MAX, "%s", dep->name);
+@@ -205,18 +206,20 @@ DECLARE_EVENT_CLASS(dwc3_log_gadget_ep_cmd,
+ 		__entry->param0 = params->param0;
+ 		__entry->param1 = params->param1;
+ 		__entry->param2 = params->param2;
++		__entry->cmd_status = cmd_status;
+ 	),
+-	TP_printk("%s: cmd '%s' [%d] params %08x %08x %08x",
++	TP_printk("%s: cmd '%s' [%d] params %08x %08x %08x --> status: %s",
+ 		__get_str(name), dwc3_gadget_ep_cmd_string(__entry->cmd),
+ 		__entry->cmd, __entry->param0,
+-		__entry->param1, __entry->param2
++		__entry->param1, __entry->param2,
++		dwc3_ep_cmd_status_string(__entry->cmd_status)
+ 	)
+ );
+ 
+ DEFINE_EVENT(dwc3_log_gadget_ep_cmd, dwc3_gadget_ep_cmd,
+ 	TP_PROTO(struct dwc3_ep *dep, unsigned int cmd,
+-		struct dwc3_gadget_ep_cmd_params *params),
+-	TP_ARGS(dep, cmd, params)
++		struct dwc3_gadget_ep_cmd_params *params, int cmd_status),
++	TP_ARGS(dep, cmd, params, cmd_status)
+ );
+ 
+ DECLARE_EVENT_CLASS(dwc3_log_trb,
+-- 
+1.9.1
+

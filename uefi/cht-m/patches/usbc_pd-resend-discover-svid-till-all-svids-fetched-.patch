@@ -1,0 +1,152 @@
+From 39aeacdbfadf8e1d048b377fd49ead0bffad3b4b Mon Sep 17 00:00:00 2001
+From: Venkataramana Kotakonda <venkataramana.kotakonda@intel.com>
+Date: Thu, 11 Feb 2016 15:29:10 +0530
+Subject: [PATCH 4/6] usbc_pd: resend discover svid till all svids fetched from
+ ufp.
+
+If the ufp supports 12 or more SVIDs then the discover_svid command
+shall be executed multiple times until a discover_svid VDO is returned
+ending either with a SVID value of 0x0000 in the last part of the last
+VDO or with a VDO containing two SVIDs with values of 0x0000.
+
+Change-Id: Ibfdc3e48be0f368aff021a1c917dbcf6c0cfba33
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-19755
+Signed-off-by: Venkataramana Kotakonda <venkataramana.kotakonda@intel.com>
+Reviewed-on: https://android.intel.com:443/469153
+---
+ drivers/usb/typec/pd/message.h       |  4 ++--
+ drivers/usb/typec/pd/policy_engine.c |  1 +
+ drivers/usb/typec/pd/policy_engine.h |  1 +
+ drivers/usb/typec/pd/vdm_process.c   | 43 ++++++++++++++++++++----------------
+ 4 files changed, 28 insertions(+), 21 deletions(-)
+
+diff --git a/drivers/usb/typec/pd/message.h b/drivers/usb/typec/pd/message.h
+index 63e7a81..45a7052 100644
+--- a/drivers/usb/typec/pd/message.h
++++ b/drivers/usb/typec/pd/message.h
+@@ -227,14 +227,14 @@ struct dis_id_response_hub_pkt {
+ } __packed;
+ 
+ struct dp_vdo {
+-	u16 svid0;
+ 	u16 svid1;
++	u16 svid0;
+ } __packed;
+ 
+ struct dis_svid_response_pkt {
+ 	struct pd_pkt_header msg_hdr;
+ 	struct vdm_header vdm_hdr;
+-	struct dp_vdo vdo[6];
++	struct dp_vdo svid[6];
+ } __packed;
+ 
+ struct disp_mode {
+diff --git a/drivers/usb/typec/pd/policy_engine.c b/drivers/usb/typec/pd/policy_engine.c
+index 8b8eaf6..4bad3d8 100644
+--- a/drivers/usb/typec/pd/policy_engine.c
++++ b/drivers/usb/typec/pd/policy_engine.c
+@@ -84,6 +84,7 @@ static void pe_do_pe_reset(struct policy_engine *pe)
+ 	 */
+ 	pe->alt_state = PE_ALT_STATE_NONE;
+ 	pe->is_modal_operation = false;
++	pe->pp_is_vesa = false;
+ 	if (pe->pp_alt_caps.hpd_state)
+ 		devpolicy_set_dp_state(pe->p.dpm, CABLE_DETACHED,
+ 						TYPEC_DP_TYPE_NONE);
+diff --git a/drivers/usb/typec/pd/policy_engine.h b/drivers/usb/typec/pd/policy_engine.h
+index 43c87b9..8884d30 100644
+--- a/drivers/usb/typec/pd/policy_engine.h
++++ b/drivers/usb/typec/pd/policy_engine.h
+@@ -572,6 +572,7 @@ struct policy_engine {
+ 	unsigned is_modal_operation:1;
+ 	unsigned is_pr_swap_rejected:1;
+ 	unsigned is_pd_enabled:1;
++	unsigned pp_is_vesa:1;
+ };
+ 
+ 
+diff --git a/drivers/usb/typec/pd/vdm_process.c b/drivers/usb/typec/pd/vdm_process.c
+index 95d12a6..21f3372 100644
+--- a/drivers/usb/typec/pd/vdm_process.c
++++ b/drivers/usb/typec/pd/vdm_process.c
+@@ -82,6 +82,7 @@ int pe_send_discover_identity(struct policy_engine *pe, int type)
+ 	struct vdm_header v_hdr = { 0 };
+ 	int ret;
+ 
++	pe->pp_is_vesa = false;
+ 	pe_prepare_initiator_vdm_header(&v_hdr, DISCOVER_IDENTITY,
+ 						PD_SID, 0);
+ 	ret = pe_send_packet_type(pe, &v_hdr, 4, PD_DATA_MSG_VENDOR_DEF,
+@@ -137,15 +138,14 @@ static void pe_send_discover_identity_responder_ack(struct policy_engine *pe)
+ 
+ static void pe_send_discover_svid_responder_ack(struct policy_engine *pe)
+ {
+-	u32 vdm[MAX_NUM_DATA_OBJ];
+-	struct vdm_header *v_hdr = (struct vdm_header *)&vdm[0];
+-	struct dp_vdo *svid_vdo = (struct dp_vdo *)&vdm[1];
++	struct dis_svid_response_pkt svid_pkt;
+ 
+-	memset(&vdm, 0, sizeof(vdm));
+-	pe_prepare_vdm_header(v_hdr, DISCOVER_SVID, REP_ACK, PD_SID, 0);
+-	svid_vdo->svid0 = PD_SID;
++	memset(&svid_pkt, 0, sizeof(svid_pkt));
++	pe_prepare_vdm_header(&svid_pkt.vdm_hdr, DISCOVER_SVID,
++						REP_ACK, PD_SID, 0);
++	svid_pkt.svid[0].svid0 = PD_SID;
+ 
+-	if (pe_send_packet(pe, &vdm, 8,
++	if (pe_send_packet(pe, &svid_pkt.vdm_hdr, 8,
+ 				PD_DATA_MSG_VENDOR_DEF, PE_EVT_SEND_VDM))
+ 		log_err("Failed to send SVID ack");
+ 	else
+@@ -399,8 +399,8 @@ static int pe_handle_discover_svid(struct policy_engine *pe,
+ {
+ 	struct dis_svid_response_pkt *svid_pkt;
+ 	unsigned short cmd_type;
+-	int num_modes = 0;
+-	int i, mode = 0;
++	int num_data;
++	int i;
+ 
+ 	svid_pkt = (struct dis_svid_response_pkt *)pkt;
+ 	cmd_type = svid_pkt->vdm_hdr.cmd_type;
+@@ -425,21 +425,26 @@ static int pe_handle_discover_svid(struct policy_engine *pe,
+ 	switch (cmd_type) {
+ 	case REP_ACK:
+ 		/* 2 modes per VDO*/
+-		num_modes = (svid_pkt->msg_hdr.num_data_obj - 1) * 2;
++		num_data = svid_pkt->msg_hdr.num_data_obj - 1;
+ 		log_dbg("SVID_ACK-> This Display supports %d modes\n",
+-				num_modes);
+-		for (i = 0; i < num_modes; i++) {
+-			log_dbg("vdo[%d].svid0=0x%x, svid1=0x%x\n",
+-				i, svid_pkt->vdo[i].svid0,
+-				svid_pkt->vdo[i].svid1);
+-			if ((svid_pkt->vdo[i].svid0 == VESA_SVID)
+-				|| (svid_pkt->vdo[i].svid1 == VESA_SVID)) {
+-				mode = VESA_SVID;
++				num_data * 2);
++		for (i = 0; i < num_data; i++) {
++			log_dbg("svid[%d].svid0=0x%x, svid1=0x%x",
++						i, svid_pkt->svid[i].svid0,
++						svid_pkt->svid[i].svid1);
++			if (svid_pkt->svid[i].svid0 == VESA_SVID
++				|| svid_pkt->svid[i].svid1 == VESA_SVID) {
++				pe->pp_is_vesa = true;
+ 				break;
+ 			}
+ 		}
++		if (svid_pkt->svid[num_data-1].svid1) {
++			log_dbg("More svids available, send discover_svid");
++			pe->alt_state = PE_ALT_STATE_DI_ACKED;
++			break;
++		}
+ 		/* Currently we support only VESA */
+-		if (mode == VESA_SVID) {
++		if (pe->pp_is_vesa) {
+ 			log_dbg("This Display supports VESA\n");
+ 			pe->alt_state = PE_ALT_STATE_SVID_ACKED;
+ 			break;
+-- 
+1.9.1
+

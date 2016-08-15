@@ -1,0 +1,32 @@
+From b9562ed885ea606363b14faf2b5807f9a78fd584 Mon Sep 17 00:00:00 2001
+From: Janusz Dziedzic <januszx.dziedzic@intel.com>
+Date: Tue, 31 May 2016 08:39:25 +0200
+Subject: [PATCH 77/78] usb: gadget: ether: Use more usb request for tx/rx
+
+Use 32 usb requests for tx and rx direction.
+This improve performance.
+
+Change-Id: Ib41417c5d2dd0634387ba415a1dc02fac43e855a
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-19337
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+Reviewed-on: https://android.intel.com:443/511202
+---
+ drivers/usb/gadget/u_ether.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/usb/gadget/u_ether.h b/drivers/usb/gadget/u_ether.h
+index 7acd214..9753268 100644
+--- a/drivers/usb/gadget/u_ether.h
++++ b/drivers/usb/gadget/u_ether.h
+@@ -21,7 +21,7 @@
+ 
+ #include "gadget_chips.h"
+ 
+-#define QMULT_DEFAULT 5
++#define QMULT_DEFAULT 16
+ 
+ /*
+  * dev_addr: initial value
+-- 
+1.9.1
+

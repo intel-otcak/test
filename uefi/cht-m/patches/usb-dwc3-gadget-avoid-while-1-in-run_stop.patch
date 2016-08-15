@@ -1,0 +1,42 @@
+From 7efda8d0557422f830a90d1524a3c4d6d2dd55e3 Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <felipe.balbi@linux.intel.com>
+Date: Thu, 9 Jun 2016 16:31:34 +0300
+Subject: [PATCH 39/41] usb: dwc3: gadget: avoid while(1) in run_stop()
+
+instead of looping forever and forcing a return if
+timeout reaches zero, we can just use timeout and
+loop's break condition directly.
+
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit f2df679b6c556fd3b0b7ffafea170f1679086455)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I9b8200fa6343f2e8a0258378c35f1250ae6ce71a
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34814
+Reviewed-on: https://android.intel.com:443/519809
+---
+ drivers/usb/dwc3/gadget.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index 007e408..a0f8123 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -1759,10 +1759,10 @@ static int dwc3_gadget_run_stop(struct dwc3 *dwc, int is_on)
+ 			if (reg & DWC3_DSTS_DEVCTRLHLT)
+ 				break;
+ 		}
+-		timeout--;
+-		if (!timeout)
+-			return -ETIMEDOUT;
+-	} while (1);
++	} while (--timeout);
++
++	if (!timeout)
++		return -ETIMEDOUT;
+ 
+ 	dwc3_trace(trace_dwc3_gadget, "gadget %s data soft-%s",
+ 			dwc->gadget_driver
+-- 
+1.9.1
+

@@ -1,0 +1,87 @@
+From f0d310eecfdb0a754da1f6b343f72a2bb60fde4b Mon Sep 17 00:00:00 2001
+From: Russ Weight <russell.h.weight@intel.com>
+Date: Wed, 6 Jul 2016 17:54:27 -0700
+Subject: [PATCH 1/1] Revert "BACKPORT: selinux: restrict kernel module
+ loading"
+
+This reverts commit 6181b11ade1e3058d1d369283f8392226c312bd9.
+
+Temporarily revert support for restricting the loading of kernel
+modules, until appropriate selinux rules are in place.
+
+Change-Id: I1db78e60a88f4aa60a0ffccc96729ed515987ccb
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-33729
+Signed-off-by: Russ Weight <russell.h.weight@intel.com>
+Reviewed-on: https://android.intel.com:443/523380
+---
+ security/selinux/hooks.c            | 33 ---------------------------------
+ security/selinux/include/classmap.h |  2 +-
+ 2 files changed, 1 insertion(+), 34 deletions(-)
+
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index cff623f..e45ef57 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -3625,38 +3625,6 @@ static int selinux_kernel_module_request(char *kmod_name)
+ 			    SYSTEM__MODULE_REQUEST, &ad);
+ }
+ 
+-static int selinux_kernel_module_from_file(struct file *file)
+-{
+-	struct common_audit_data ad;
+-	struct inode_security_struct *isec;
+-	struct file_security_struct *fsec;
+-	struct inode *inode;
+-	u32 sid = current_sid();
+-	int rc;
+-
+-	/* init_module */
+-	if (file == NULL)
+-		return avc_has_perm(sid, sid, SECCLASS_SYSTEM,
+-					SYSTEM__MODULE_LOAD, NULL);
+-
+-	/* finit_module */
+-	ad.type = LSM_AUDIT_DATA_PATH;
+-	ad.u.path = file->f_path;
+-
+-	inode = file_inode(file);
+-	isec = inode->i_security;
+-	fsec = file->f_security;
+-
+-	if (sid != fsec->sid) {
+-		rc = avc_has_perm(sid, fsec->sid, SECCLASS_FD, FD__USE, &ad);
+-		if (rc)
+-			return rc;
+-	}
+-
+-	return avc_has_perm(sid, isec->sid, SECCLASS_SYSTEM,
+-				SYSTEM__MODULE_LOAD, &ad);
+-}
+-
+ static int selinux_task_setpgid(struct task_struct *p, pid_t pgid)
+ {
+ 	return current_has_perm(p, PROCESS__SETPGID);
+@@ -5984,7 +5952,6 @@ static struct security_operations selinux_ops = {
+ 	.kernel_act_as =		selinux_kernel_act_as,
+ 	.kernel_create_files_as =	selinux_kernel_create_files_as,
+ 	.kernel_module_request =	selinux_kernel_module_request,
+-	.kernel_module_from_file =      selinux_kernel_module_from_file,
+ 	.task_setpgid =			selinux_task_setpgid,
+ 	.task_getpgid =			selinux_task_getpgid,
+ 	.task_getsid =			selinux_task_getsid,
+diff --git a/security/selinux/include/classmap.h b/security/selinux/include/classmap.h
+index 3e53322..c32ff7b 100644
+--- a/security/selinux/include/classmap.h
++++ b/security/selinux/include/classmap.h
+@@ -32,7 +32,7 @@ struct security_class_mapping secclass_map[] = {
+ 	    "setsockcreate", NULL } },
+ 	{ "system",
+ 	  { "ipc_info", "syslog_read", "syslog_mod",
+-	    "syslog_console", "module_request", "module_load", NULL } },
++	    "syslog_console", "module_request", NULL } },
+ 	{ "capability",
+ 	  { "chown", "dac_override", "dac_read_search",
+ 	    "fowner", "fsetid", "kill", "setgid", "setuid", "setpcap",
+-- 
+1.9.1
+

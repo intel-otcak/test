@@ -1,0 +1,80 @@
+From 561c7c16a0a75e7fa959aba91777d85dc485feb2 Mon Sep 17 00:00:00 2001
+From: sys_icgvert <icgvert@intel.com>
+Date: Wed, 29 Jun 2016 15:18:18 -0700
+Subject: [PATCH] atomisp2:css2400&2401
+ irci_ecr-stable_btns_20160510_20160628_1849
+
+Merge CSS2.1 for css2400 and 2401_legacy pkg
+
+Change-Id: I2a261cd5b6ad1b9ee73324bcf9f67eae21db6c63
+FW: tag irci_ecr-stable_btns_20160510_20160628_1849
+Original-Tracked_On: https://jira01.devtools.intel.com/browse/IMINAN-50567
+Signed-off-by: sys_icgvert <icgvert@intel.com>
+Reviewed-on: https://icggerrit.corp.intel.com/131070
+Approver: Fan F Yang <fan.f.yang@intel.com>
+Reviewed-by: Fan F Yang <fan.f.yang@intel.com>
+Integrator: WeiX Meng <weix.meng@intel.com>
+Reviewed-by: WeiX Meng <weix.meng@intel.com>
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-35091
+Signed-off-by: Tao Wei <wei.tao@intel.com>
+Reviewed-on: https://android.intel.com:443/522970
+---
+ .../external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css.h   | 2 +-
+ .../camera/drivers/media/pci/atomisp2/css/ia_css_types.h              | 2 +-
+ .../camera/drivers/media/pci/atomisp2/css/ia_css_version_data.h       | 2 +-
+ .../camera/drivers/media/pci/atomisp2/css/sh_css_firmware.c           | 4 ++--
+ 4 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css.h b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css.h
+index 66df5d4..c2d2a8f 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css.h
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css.h
+@@ -1,4 +1,4 @@
+-/* Release Version: irci_ecr-stable_btns_20160510_20160623_0802 */
++/* Release Version: irci_ecr-stable_btns_20160510_20160628_1849 */
+ /**
+ Support for Intel Camera Imaging ISP subsystem.
+ Copyright (c) 2010 - 2015, Intel Corporation.
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_types.h b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_types.h
+index de365dc53..fd4145b 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_types.h
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_types.h
+@@ -1,4 +1,4 @@
+-/* Release Version: irci_ecr-stable_btns_20160510_20160623_0802 */
++/* Release Version: irci_ecr-stable_btns_20160510_20160628_1849 */
+ /**
+ Support for Intel Camera Imaging ISP subsystem.
+ Copyright (c) 2010 - 2015, Intel Corporation.
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_version_data.h b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_version_data.h
+index de0c8f9..7ecc0f9 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_version_data.h
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_version_data.h
+@@ -22,7 +22,7 @@ more details.
+ #define __IA_CSS_VERSION_DATA_H
+ 
+ 
+-#define CSS_VERSION_STRING "REL:20160623_25.4_1244; API:2.1.22.3; GIT:irci___#e22841f3695149da0576785f00ae0bfef7047a71; SDK:; USER:viedifw; "
++#define CSS_VERSION_STRING "REL:20160628_26.2_2319; API:2.1.22.3; GIT:irci___#8446d53906284cfe6c86dd1a55508a1b2db4436b; SDK:; USER:viedifw; "
+ 
+ 
+ #endif
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_firmware.c b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_firmware.c
+index 54b7509..a9dd383 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_firmware.c
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_firmware.c
+@@ -48,10 +48,10 @@ struct fw_param {
+ /* Warning: same order as SH_CSS_BINARY_ID_* */
+ static struct firmware_header *firmware_header;
+ 
+-/* The string STR(irci_ecr-stable_btns_20160510_20160623_0802) is a place holder
++/* The string STR(irci_ecr-stable_btns_20160510_20160628_1849) is a place holder
+  * which will be replaced with the actual RELEASE_VERSION
+  * during package generation. Please do not modify  */
+-static const char *release_version = STR(irci_ecr-stable_btns_20160510_20160623_0802);
++static const char *release_version = STR(irci_ecr-stable_btns_20160510_20160628_1849);
+ 
+ #define MAX_FW_REL_VER_NAME	300
+ static char FW_rel_ver_name[MAX_FW_REL_VER_NAME] = "---";
+-- 
+1.9.1
+

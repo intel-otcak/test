@@ -1,0 +1,50 @@
+From 38be78d99ff3f6add4aa5d18392e24d2215088a3 Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <balbi@ti.com>
+Date: Mon, 28 Sep 2015 14:49:02 -0500
+Subject: [PATCH 35/78] usb: dwc3: gadget: use update transfer command
+
+If we get a Xfer Not Ready event with reason
+"Transfer Active" it means endpoint is still
+transferring data and we can use that to issue
+update transfer for this particular endpoint
+in case we have pending requests in our queue.
+
+Signed-off-by: Felipe Balbi <balbi@ti.com>
+(cherry picked from commit 6bb4fe12ea089da98b89dc2630d2273d60fe0c29)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I732b01980b4131fe25db13ea5427399c0f7617d9
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-19337
+Reviewed-on: https://android.intel.com:443/511160
+---
+ drivers/usb/dwc3/gadget.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index 0d601eb..3c15222 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -2170,15 +2170,16 @@ static void dwc3_endpoint_interrupt(struct dwc3 *dwc,
+ 		if (usb_endpoint_xfer_isoc(dep->endpoint.desc)) {
+ 			dwc3_gadget_start_isoc(dwc, dep, event);
+ 		} else {
++			int active;
+ 			int ret;
+ 
++			active = event->status & DEPEVT_STATUS_TRANSFER_ACTIVE;
++
+ 			dwc3_trace(trace_dwc3_gadget, "%s: reason %s",
+-					dep->name, event->status &
+-					DEPEVT_STATUS_TRANSFER_ACTIVE
+-					? "Transfer Active"
++					dep->name, active ? "Transfer Active"
+ 					: "Transfer Not Active");
+ 
+-			ret = __dwc3_gadget_kick_transfer(dep, 0, 1);
++			ret = __dwc3_gadget_kick_transfer(dep, 0, !active);
+ 			if (!ret || ret == -EBUSY)
+ 				return;
+ 
+-- 
+1.9.1
+

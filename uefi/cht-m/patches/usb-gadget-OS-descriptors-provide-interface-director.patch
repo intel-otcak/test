@@ -1,0 +1,88 @@
+From 311c474d5cd2ad12998709eeb9d4cdf7c92a570e Mon Sep 17 00:00:00 2001
+From: Andrzej Pietrasiewicz <andrzej.p@samsung.com>
+Date: Wed, 18 Jun 2014 14:24:49 +0200
+Subject: [PATCH 13/14] usb: gadget: OS descriptors: provide interface
+ directory names
+
+Function's interface directories need to be created when the function
+directory is created, but interface numbers are not known until
+the gadget is ready and bound to udc, so we cannot use numbers
+as part of interface directory names.
+Let the client decide what names to use.
+
+Signed-off-by: Andrzej Pietrasiewicz <andrzej.p@samsung.com>
+Signed-off-by: Felipe Balbi <balbi@ti.com>
+
+(cherry picked from commit 14574b546d87a282cc9ea0f43935cee6bfc97bf8)
+
+Change-Id: I4cea18dd81dfc7a39042aafe654d6ee924c6ec21
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-33009
+Signed-off-by: Krzysztof Adamski <krzysztofx.adamski@intel.com>
+Reviewed-on: https://android.intel.com:443/514019
+---
+ drivers/usb/gadget/configfs.c | 5 +++--
+ drivers/usb/gadget/configfs.h | 1 +
+ drivers/usb/gadget/f_rndis.c  | 4 +++-
+ 3 files changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/usb/gadget/configfs.c b/drivers/usb/gadget/configfs.c
+index 299407a..c0deb0b 100644
+--- a/drivers/usb/gadget/configfs.c
++++ b/drivers/usb/gadget/configfs.c
+@@ -1252,6 +1252,7 @@ static struct configfs_attribute *interf_grp_attrs[] = {
+ int usb_os_desc_prepare_interf_dir(struct config_group *parent,
+ 				   int n_interf,
+ 				   struct usb_os_desc **desc,
++				   char **names,
+ 				   struct module *owner)
+ {
+ 	struct config_group **f_default_groups, *os_desc_group,
+@@ -1293,8 +1294,8 @@ int usb_os_desc_prepare_interf_dir(struct config_group *parent,
+ 		d = desc[n_interf];
+ 		d->owner = owner;
+ 		config_group_init_type_name(&d->group, "", interface_type);
+-		config_item_set_name(&d->group.cg_item, "interface.%d",
+-				     n_interf);
++		config_item_set_name(&d->group.cg_item, "interface.%s",
++				     names[n_interf]);
+ 		interface_groups[n_interf] = &d->group;
+ 	}
+ 
+diff --git a/drivers/usb/gadget/configfs.h b/drivers/usb/gadget/configfs.h
+index a14ac79..36c468c 100644
+--- a/drivers/usb/gadget/configfs.h
++++ b/drivers/usb/gadget/configfs.h
+@@ -8,6 +8,7 @@ void unregister_gadget_item(struct config_item *item);
+ int usb_os_desc_prepare_interf_dir(struct config_group *parent,
+ 				   int n_interf,
+ 				   struct usb_os_desc **desc,
++				   char **names,
+ 				   struct module *owner);
+ 
+ static inline struct usb_os_desc *to_usb_os_desc(struct config_item *item)
+diff --git a/drivers/usb/gadget/f_rndis.c b/drivers/usb/gadget/f_rndis.c
+index 67ffa73..1e66722 100644
+--- a/drivers/usb/gadget/f_rndis.c
++++ b/drivers/usb/gadget/f_rndis.c
+@@ -916,6 +916,7 @@ static struct usb_function_instance *rndis_alloc_inst(void)
+ {
+ 	struct f_rndis_opts *opts;
+ 	struct usb_os_desc *descs[1];
++	char *names[1];
+ 
+ 	opts = kzalloc(sizeof(*opts), GFP_KERNEL);
+ 	if (!opts)
+@@ -933,8 +934,9 @@ static struct usb_function_instance *rndis_alloc_inst(void)
+ 	INIT_LIST_HEAD(&opts->rndis_os_desc.ext_prop);
+ 
+ 	descs[0] = &opts->rndis_os_desc;
++	names[0] = "rndis";
+ 	usb_os_desc_prepare_interf_dir(&opts->func_inst.group, 1, descs,
+-				       THIS_MODULE);
++				       names, THIS_MODULE);
+ 	config_group_init_type_name(&opts->func_inst.group, "",
+ 				    &rndis_func_type);
+ 
+-- 
+1.9.1
+

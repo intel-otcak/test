@@ -1,0 +1,52 @@
+From b00c2fd7d24724352777608e729ddc45365806ac Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <felipe.balbi@linux.intel.com>
+Date: Thu, 9 Jun 2016 16:47:05 +0300
+Subject: [PATCH 40/41] usb: dwc3: gadget: simplify run_stop() break condition
+
+it's clear now that when is_on=true, we must loop
+until DWC3_DSTS_DEVCTRLHLT clears; while when
+is_on=false we must loop until DWC3_DSTS_DEVCTRLHLT
+gets set.
+
+Instead of adding actual if() statements, we can
+rely on XOR operation to evaluate to true only when
+the above conditions apply. Then, we can move the
+break condition back to the while() statement
+together with our timeout check and the resulting
+code is very compact and simpler to read.
+
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit b6d4e16e831376b676edb3463f2bdaa192e5f7be)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: Ifa307b8535d73dce3a1016747475af2575340dcd
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34814
+Reviewed-on: https://android.intel.com:443/519810
+---
+ drivers/usb/dwc3/gadget.c | 10 ++--------
+ 1 file changed, 2 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index a0f8123..e47cf6f 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -1752,14 +1752,8 @@ static int dwc3_gadget_run_stop(struct dwc3 *dwc, int is_on)
+ 
+ 	do {
+ 		reg = dwc3_readl(dwc->regs, DWC3_DSTS);
+-		if (is_on) {
+-			if (!(reg & DWC3_DSTS_DEVCTRLHLT))
+-				break;
+-		} else {
+-			if (reg & DWC3_DSTS_DEVCTRLHLT)
+-				break;
+-		}
+-	} while (--timeout);
++		reg &= DWC3_DSTS_DEVCTRLHLT;
++	} while (--timeout && !(!is_on ^ !reg));
+ 
+ 	if (!timeout)
+ 		return -ETIMEDOUT;
+-- 
+1.9.1
+

@@ -1,0 +1,66 @@
+From 1c218d3b8061df30797c6afd5cf2284df838510e Mon Sep 17 00:00:00 2001
+From: "Thulasimani,Sivakumar" <sivakumar.thulasimani@intel.com>
+Date: Thu, 31 Mar 2016 00:39:28 +0530
+Subject: [PATCH 19/41] SQUASHME! [VPG]: drm/i915: Always do fake detach-attach
+ for SHPD failure
+
+It was incorrect to assume that forcing full detect when
+handling short pulse interrupt failures will recover the
+system. It will just end up detecting the panel as still
+connected and exit. hence force fake detach and attach
+for all short pulse failures to allow the system
+to be recovered.
+
+Upfront logic is not required for simulated detach and attach since
+it is expected that the lane count will not change through
+short pulse. This also helps in avoiding the time spent in
+upfront link training.
+
+This patch has to be squashed to the following patch
+Author: Thulasimani,Sivakumar <sivakumar.thulasimani@intel.com>
+Date:   Thu Sep 24 18:53:36 2015 +0530
+FOR_UPSTREAM [VPG]: drm/i915: Lane count change detection
+
+Change-Id: I5fe548fa2be697e0aafb54f04bfbeb1de127bc1e
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-31683
+Signed-off-by: Sivakumar Thulasimani <sivakumar.thulasimani@intel.com>
+Reviewed-on: https://android.intel.com:443/498192
+Reviewed-on: https://android.intel.com:443/504754
+---
+ drivers/gpu/drm/i915/intel_dp.c | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
+
+diff --git a/drivers/gpu/drm/i915/intel_dp.c b/drivers/gpu/drm/i915/intel_dp.c
+index a9b177d..4f54c16 100644
+--- a/drivers/gpu/drm/i915/intel_dp.c
++++ b/drivers/gpu/drm/i915/intel_dp.c
+@@ -4937,6 +4937,26 @@ intel_dp_detect(struct drm_connector *connector, bool force)
+ 
+ 	}
+ 
++	/* if simulation was in progress clear the flag & skip upfront */
++	if (dev_priv->simulate_dp_in_progress & intel_encoder->hpd_pin)
++		dev_priv->simulate_dp_in_progress &= ~(intel_encoder->hpd_pin);
++	else if (IS_CHERRYVIEW(dev) &&
++		intel_dp->compliance_test_type != DP_TEST_LINK_TRAINING &&
++			intel_encoder->type == INTEL_OUTPUT_DISPLAYPORT) {
++
++		/*
++		 * TODO: Need to test connected boot scenario once platform
++		 * patches are ready. This path is tested on reworked-RVP only.
++		 */
++		if (intel_encoder->connectors_active &&
++						crtc && crtc->enabled) {
++			intel_crtc = to_intel_crtc(crtc);
++			DRM_DEBUG_KMS("Disabling crtc %c for upfront LT\n",
++					pipe_name(intel_crtc->pipe));
++			intel_crtc_control(crtc, false);
++		}
++		chv_upfront_link_train(dev, intel_dp, intel_crtc);
++	}
+ 
+ 	/*
+ 	 * dp aux is extremely sensitive to irq latency, hence request the
+-- 
+1.9.1
+

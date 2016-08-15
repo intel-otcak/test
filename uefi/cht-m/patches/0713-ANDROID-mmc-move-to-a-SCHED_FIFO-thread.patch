@@ -1,0 +1,46 @@
+From 892e11e494f7cf4124b18a59a20768d502bb8b43 Mon Sep 17 00:00:00 2001
+From: Tim Murray <timmurray@google.com>
+Date: Tue, 19 Jan 2016 16:36:40 -0800
+Subject: [PATCH 713/769] ANDROID: mmc: move to a SCHED_FIFO thread
+
+(cherry picked from commit 011e507b413393eab8279dac8b778ad9b6e9971b)
+
+Running mmcqd as a prio 120 thread forces it to compete with standard
+user processes for IO performance, especially when the system is under
+severe CPU load. Move it to a SCHED_FIFO thread to reduce the impact of
+load on IO performance.
+
+Signed-off-by: Tim Murray <timmurray@google.com>
+Bug: 25392275
+Change-Id: I1edfe73baa25e181367c30c1f40fee886e92b60d
+---
+ drivers/mmc/card/queue.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/drivers/mmc/card/queue.c b/drivers/mmc/card/queue.c
+index 3e049c1..54555ed 100644
+--- a/drivers/mmc/card/queue.c
++++ b/drivers/mmc/card/queue.c
+@@ -19,6 +19,7 @@
+ 
+ #include <linux/mmc/card.h>
+ #include <linux/mmc/host.h>
++#include <linux/sched/rt.h>
+ #include "queue.h"
+ 
+ #define MMC_QUEUE_BOUNCESZ	65536
+@@ -51,6 +52,11 @@ static int mmc_queue_thread(void *d)
+ 	struct mmc_queue *mq = d;
+ 	struct request_queue *q = mq->queue;
+ 
++	struct sched_param scheduler_params = {0};
++	scheduler_params.sched_priority = 1;
++
++	sched_setscheduler(current, SCHED_FIFO, &scheduler_params);
++
+ 	current->flags |= PF_MEMALLOC;
+ 
+ 	down(&mq->thread_sem);
+-- 
+1.9.1
+

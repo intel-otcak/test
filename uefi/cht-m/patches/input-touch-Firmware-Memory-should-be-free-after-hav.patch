@@ -1,0 +1,42 @@
+From f78903aba83556cfc3c7b0e6589b250ced855c1a Mon Sep 17 00:00:00 2001
+From: Yu Xia <xiax.yu@intel.com>
+Date: Mon, 25 Apr 2016 16:10:11 +0000
+Subject: [PATCH 11/41] input: touch: Firmware Memory should be free after have
+ used Firmware.
+
+GSL_CONFIG_DATA_ID do not need init twice.
+
+Change-Id: Ib1649505850566045cc2da59acf4f47e5dddf2f1
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-31785
+Signed-off-by: Yu Xia <xiax.yu@intel.com>
+Reviewed-on: https://android.intel.com:443/498978
+Signed-off-by: Yu Xia <xiax.yu@intel.com>
+Reviewed-on: https://android.intel.com:443/505228
+---
+ drivers/input/touchscreen/silead.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/input/touchscreen/silead.c b/drivers/input/touchscreen/silead.c
+index 78d2183..d89d8d6 100644
+--- a/drivers/input/touchscreen/silead.c
++++ b/drivers/input/touchscreen/silead.c
+@@ -374,6 +374,8 @@ static int silead_ts_load_fw(struct i2c_client *client)
+ 
+ release_fw_err:
+ 	release_firmware(fw);
++	fw = NULL;
++
+ 	return ret;
+ }
+ 
+@@ -707,6 +709,7 @@ static int silead_ts_probe(struct i2c_client *client,
+ 					client->name, data);
+ 	if (ret) {
+ 		dev_err(dev, "IRQ request failed %d\n", ret);
++		input_unregister_device(data->input_dev);
+ 		return ret;
+ 	}
+ #ifdef CONFIG_PM
+-- 
+1.9.1
+

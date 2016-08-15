@@ -1,0 +1,34 @@
+From 90e7af251e3493816fdc7d447e5e57bd469528c0 Mon Sep 17 00:00:00 2001
+From: Anis Ouni <anisx.ouni@intel.com>
+Date: Tue, 24 May 2016 11:21:58 +0200
+Subject: [PATCH 2/2] config-partition: Change mounting point
+
+Android N is now mounting a configfs filesystem in /config.
+This location cannot be used anymore.
+
+The new location for config files will be: /oem_config.
+
+Change-Id: Iaad92b99bf1ce6e8917f396ed30eb5adfbbf419f
+Signed-off-by: Anis Ouni <anisx.ouni@intel.com>
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-32637
+Reviewed-on: https://android.intel.com:443/509370
+---
+ drivers/net/wireless/bcmdhd/dhd_linux_platdev.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/wireless/bcmdhd/dhd_linux_platdev.c b/drivers/net/wireless/bcmdhd/dhd_linux_platdev.c
+index 1edda83..5328df2 100644
+--- a/drivers/net/wireless/bcmdhd/dhd_linux_platdev.c
++++ b/drivers/net/wireless/bcmdhd/dhd_linux_platdev.c
+@@ -158,7 +158,7 @@ static int wifi_get_external_mac_addr(unsigned char *buf)
+ 	int i;
+ 	struct file *fp = NULL;
+ 	unsigned char c_mac[MAC_ADDRESS_LEN];
+-	char fname[] = "/config/wifi/mac.txt";
++	char fname[] = "/oem_config/wifi/mac.txt";
+ 
+ 	DHD_TRACE(("%s Enter\n", __func__));
+ 
+-- 
+1.9.1
+

@@ -1,0 +1,88 @@
+From cc7a06d13765d33137f9688296efd85eba8e1432 Mon Sep 17 00:00:00 2001
+From: Janusz Dziedzic <januszx.dziedzic@intel.com>
+Date: Fri, 22 Apr 2016 09:48:39 +0200
+Subject: [PATCH 1/2] usb: gadget: mtp avoid pointless blocked-task warnings
+
+In case of using mtp and large files we often get:
+
+INFO: task MtpServer:6205 blocked for more than 120 seconds.
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+MtpServer       D ffff880049db3bd8     0  6205   3412 0x00000000
+Call Trace:
+[<ffffffff81a60647>] schedule+0x37/0x90
+[<ffffffff81a64cdc>] schedule_timeout+0x23c/0x2c0
+[<ffffffff810bc491>] ? get_parent_ip+0x11/0x50
+[<ffffffff81a61b27>] wait_for_completion+0xf7/0x130
+[<ffffffff810be600>] ? wake_up_state+0x20/0x20
+[<ffffffff810a8e48>] flush_workqueue+0x138/0x5f0
+[<ffffffff8179c141>] mtp_ioctl+0x1e1/0x4e0
+[<ffffffff811ed7c8>] do_vfs_ioctl+0x308/0x540
+[<ffffffff811eda81>] SyS_ioctl+0x81/0xa0
+[<ffffffff81a66317>] system_call_fastpath+0x12/0x6a
+
+Change-Id: I59237800a6414900239741fff0b6560564f38907
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-31480
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+Reviewed-on: https://android.intel.com:443/508881
+---
+ drivers/usb/gadget/f_mtp.c | 16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/usb/gadget/f_mtp.c b/drivers/usb/gadget/f_mtp.c
+index 6e85c0f..6ca75e8 100644
+--- a/drivers/usb/gadget/f_mtp.c
++++ b/drivers/usb/gadget/f_mtp.c
+@@ -102,6 +102,8 @@ struct mtp_dev {
+ 	/* to enforce only one ioctl at a time */
+ 	atomic_t ioctl_excl;
+ 
++	struct completion ioctl_completion;
++
+ 	struct list_head tx_idle;
+ 	struct list_head intr_idle;
+ 
+@@ -830,6 +832,7 @@ static void send_file_work(struct work_struct *data)
+ 	/* write the result */
+ 	dev->xfer_result = r;
+ 	smp_wmb();
++	complete(&dev->ioctl_completion);
+ }
+ 
+ /* read from USB and write to a local file */
+@@ -923,6 +926,7 @@ static void receive_file_work(struct work_struct *data)
+ 	/* write the result */
+ 	dev->xfer_result = r;
+ 	smp_wmb();
++	complete(&dev->ioctl_completion);
+ }
+ 
+ static int mtp_send_event(struct mtp_dev *dev, struct mtp_event *event)
+@@ -1024,7 +1028,16 @@ static long mtp_ioctl(struct file *fp, unsigned code, unsigned long value)
+ 		 */
+ 		queue_work(dev->wq, work);
+ 		/* wait for operation to complete */
+-		flush_workqueue(dev->wq);
++		ret = wait_for_completion_interruptible(&dev->ioctl_completion);
++		if (ret) {
++			spin_lock_irq(&dev->lock);
++			dev->state = STATE_CANCELED;
++			spin_unlock_irq(&dev->lock);
++			wake_up(&dev->read_wq);
++			wake_up(&dev->write_wq);
++			flush_workqueue(dev->wq);
++		}
++
+ 		fput(filp);
+ 
+ 		/* read the result */
+@@ -1484,6 +1497,7 @@ static int __mtp_setup(struct mtp_instance *fi_mtp)
+ 	init_waitqueue_head(&dev->read_wq);
+ 	init_waitqueue_head(&dev->write_wq);
+ 	init_waitqueue_head(&dev->intr_wq);
++	init_completion(&dev->ioctl_completion);
+ 	atomic_set(&dev->open_excl, 0);
+ 	atomic_set(&dev->ioctl_excl, 0);
+ 	INIT_LIST_HEAD(&dev->tx_idle);
+-- 
+1.9.1
+

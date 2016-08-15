@@ -1,0 +1,43 @@
+From 565febadb97beb702d42527b543102dcc420bc1b Mon Sep 17 00:00:00 2001
+From: Amit Virdi <amit.virdi@st.com>
+Date: Fri, 19 Dec 2014 12:40:18 +0530
+Subject: [PATCH 22/78] usb: dwc3: Remove current_trb as it is unused
+
+This field was introduced but never used. So, remove it.
+
+Signed-off-by: Amit Virdi <amit.virdi@st.com>
+Signed-off-by: Felipe Balbi <balbi@ti.com>
+(cherry picked from commit 3cd0e29d5e28331dc78416bf7acd4e7cb63664aa)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: Ib1503dddf37e6dcafaa5a3c5fc898850a7e1ee3e
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-19337
+Reviewed-on: https://android.intel.com:443/511147
+---
+ drivers/usb/dwc3/core.h | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/drivers/usb/dwc3/core.h b/drivers/usb/dwc3/core.h
+index 079e1b2..902a1c9 100644
+--- a/drivers/usb/dwc3/core.h
++++ b/drivers/usb/dwc3/core.h
+@@ -405,7 +405,6 @@ struct dwc3_event_buffer {
+  * @desc: usb_endpoint_descriptor pointer
+  * @dwc: pointer to DWC controller
+  * @flags: endpoint flags (wedged, stalled, ...)
+- * @current_trb: index of current used trb
+  * @number: endpoint number (1 - 15)
+  * @type: set to bmAttributes & USB_ENDPOINT_XFERTYPE_MASK
+  * @resource_index: Resource transfer index
+@@ -438,8 +437,6 @@ struct dwc3_ep {
+ 	/* This last one is specific to EP0 */
+ #define DWC3_EP0_DIR_IN		(1 << 31)
+ 
+-	unsigned		current_trb;
+-
+ 	u8			number;
+ 	u8			type;
+ 	u8			resource_index;
+-- 
+1.9.1
+

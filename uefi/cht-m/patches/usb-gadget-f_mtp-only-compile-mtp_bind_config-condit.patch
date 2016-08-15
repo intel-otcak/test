@@ -1,0 +1,62 @@
+From 60821b9d9545bf156e1da5b4a4068774b974e138 Mon Sep 17 00:00:00 2001
+From: Krzysztof Adamski <krzysztofx.adamski@intel.com>
+Date: Mon, 13 Jun 2016 16:21:03 +0200
+Subject: [PATCH 07/11] usb: gadget: f_mtp: only compile mtp_bind_config
+ conditionaly
+
+This removes following warning when CONFIG_USB_G_ANDROID is not defined:
+  CC      drivers/usb/gadget/f_mtp.o
+../../../../../../kernel/cht/drivers/usb/gadget/f_mtp.c:1446:12:
+warning: 'mtp_bind_config' defined but not used [-Wunused-function]
+ static int mtp_bind_config(struct usb_configuration *c, bool
+ptp_config)
+            ^
+../../../../../../kernel/cht/drivers/usb/gadget/f_mtp.c:1553:12:
+warning: 'mtp_setup' defined but not used [-Wunused-function]
+ static int mtp_setup(void)
+            ^
+
+Change-Id: Ibbd563f4aa01d16c37c6a7ac0b2e4af86d1105cf
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-31240
+Signed-off-by: Krzysztof Adamski <krzysztofx.adamski@intel.com>
+Reviewed-on: https://android.intel.com:443/514968
+---
+ drivers/usb/gadget/f_mtp.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/usb/gadget/f_mtp.c b/drivers/usb/gadget/f_mtp.c
+index 72b8f04..def0651 100644
+--- a/drivers/usb/gadget/f_mtp.c
++++ b/drivers/usb/gadget/f_mtp.c
+@@ -1452,6 +1452,7 @@ static void mtp_function_disable(struct usb_function *f)
+ 	VDBG(cdev, "%s disabled\n", dev->function.name);
+ }
+ 
++#ifdef CONFIG_USB_G_ANDROID
+ static int mtp_bind_config(struct usb_configuration *c, bool ptp_config)
+ {
+ 	struct mtp_dev *dev = _mtp_dev;
+@@ -1487,6 +1488,7 @@ static int mtp_bind_config(struct usb_configuration *c, bool ptp_config)
+ 
+ 	return usb_add_function(c, &dev->function);
+ }
++#endif
+ 
+ static int __mtp_setup(struct mtp_instance *fi_mtp)
+ {
+@@ -1559,10 +1561,12 @@ err1:
+ 	return ret;
+ }
+ 
++#ifdef CONFIG_USB_G_ANDROID
+ static int mtp_setup(void)
+ {
+ 	return __mtp_setup(NULL);
+ }
++#endif
+ 
+ static int mtp_setup_configfs(struct mtp_instance *fi_mtp)
+ {
+-- 
+1.9.1
+

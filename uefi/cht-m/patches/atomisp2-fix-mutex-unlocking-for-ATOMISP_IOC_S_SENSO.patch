@@ -1,0 +1,43 @@
+From 317079c571984cc12ae72270a1b2ff068ff7bca0 Mon Sep 17 00:00:00 2001
+From: Bin Han <bin.b.han@intel.com>
+Date: Tue, 23 Feb 2016 17:24:21 +0800
+Subject: [PATCH 6/7] atomisp2: fix mutex unlocking for
+ ATOMISP_IOC_S_SENSOR_EE_CONFIG
+
+ATOMISP_IOC_S_SENSOR_EE_CONFIG is a sensor IOCTL code which
+does not require to lock/unlock ISP mutex.
+
+Original-Tracked-On: #H1504165637
+Change-Id: I91d1c4ef0cf6bbb64c1ac6642f07ccbc704e3415
+Signed-off-by: Bin Han <bin.b.han@intel.com>
+Reviewed-on: https://icggerrit.ir.intel.com/103381
+Reviewed-by: DaleiX Liu <daleix.liu@intel.com>
+Validation-Android: Wei Tao <wei.tao@intel.com>
+Reviewed-by: HaiqiangX Yao <haiqiangx.yao@intel.com>
+Approver: Tian Shu Qiu <tian.shu.qiu@intel.com>
+Build: Dessert M BXT RVP (SC)
+Build: Dessert M CHT FFD (SC)
+Integrator: WeiX Meng <weix.meng@intel.com>
+Reviewed-by: WeiX Meng <weix.meng@intel.com>
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-21584
+Signed-off-by: Tao Wei <wei.tao@intel.com>
+Reviewed-on: https://android.intel.com:443/475698
+---
+ .../camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_ioctl.c     | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_ioctl.c b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_ioctl.c
+index e36be1d..837c786 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_ioctl.c
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_ioctl.c
+@@ -3099,6 +3099,7 @@ static long atomisp_vidioc_default(struct file *file, void *fh,
+ 	case ATOMISP_IOC_S_SENSOR_AE_BRACKETING_MODE:
+ 	case ATOMISP_IOC_G_SENSOR_AE_BRACKETING_MODE:
+ 	case ATOMISP_IOC_S_SENSOR_AE_BRACKETING_LUT:
++	case ATOMISP_IOC_S_SENSOR_EE_CONFIG:
+ 	case ATOMISP_IOC_G_UPDATE_EXPOSURE:
+ 		break;
+ 	default:
+-- 
+1.9.1
+

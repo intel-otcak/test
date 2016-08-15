@@ -1,0 +1,44 @@
+From da605ee8491c2913b0d0afae46a4651018a74458 Mon Sep 17 00:00:00 2001
+From: Vineesh k k <vineesh.k.k@intel.com>
+Date: Wed, 18 Nov 2015 15:55:08 +0530
+Subject: [PATCH] EM/PMIC_CCSM: Set DCP/ACA inlimit to 1500mA for USB 
+ Compliance
+
+inlimit to 1500mA only if USB compliance is enabled in
+BIOS.
+
+Change-Id: Ic85e721445ef80859ad6738e6bf39c410971949a
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-9086
+Signed-off-by: Samadder, BidiptaX <bidiptax.samadder@intel.com>
+Signed-off-by: Vineesh k k <vineesh.k.k@intel.com>
+---
+ drivers/power/intel_pmic_ccsm.c |    9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+Index: b/drivers/power/intel_pmic_ccsm.c
+===================================================================
+--- a/drivers/power/intel_pmic_ccsm.c	2016-04-20 12:35:43.190600518 +0800
++++ b/drivers/power/intel_pmic_ccsm.c	2016-04-20 12:37:26.174328394 +0800
+@@ -50,6 +50,7 @@
+ #define USB_WAKE_LOCK_TIMEOUT	(5 * HZ)
+ 
+ #define USBINPUTICC100VAL	100
++#define ACINPUTICC1500VAL	1500
+ #define CDP_INPUT_CURRENT_LIMIT 1500
+ #define HIGH_POWER_CHRG_CURRENT 2000
+ #define LOW_POWER_CHRG_CURRENT 500
+@@ -947,7 +948,13 @@
+ 	case POWER_SUPPLY_CHARGER_TYPE_ACA_C:
+ 	case POWER_SUPPLY_CHARGER_TYPE_MHL:
+ 	case POWER_SUPPLY_CHARGER_TYPE_B_DEVICE:
+-		cap.ma = HIGH_POWER_CHRG_CURRENT;
++		/* set inlimit to 1500 only if
++		 * platform is USB compliant
++		 */
++		if (chc.pdata->usb_compliance)
++			cap.ma = ACINPUTICC1500VAL;
++		else
++			cap.ma = HIGH_POWER_CHRG_CURRENT;
+ 		/*
+ 		 * don't notify to OTG driver incase of non PC/Dock ports
+ 		 * connect/disconenct.

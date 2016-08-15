@@ -1,0 +1,102 @@
+From a357ead0b19a871acccbab968b1013709b17c5ef Mon Sep 17 00:00:00 2001
+From: Konrad Leszczynski <konrad.leszczynski@intel.com>
+Date: Fri, 12 Feb 2016 15:21:46 +0000
+Subject: [PATCH 15/41] usb: dwc3: gadget: give better command return code
+
+if Start Transfer command fails, let's try a little
+harder to figure out why the command failed and give
+slightly better return codes. This will be usefulf
+or isochronous endpoints, at least, which could
+decide to retry a given request.
+
+Signed-off-by: Konrad Leszczynski <konrad.leszczynski@intel.com>
+Signed-off-by: Rafal Redzimski <rafal.f.redzimski@intel.com>
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit 7b9cc7a2b101cc73f6abe3468441381c98817e54)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Conflicts:
+	drivers/usb/dwc3/gadget.c
+
+Change-Id: Ibf43a53ff9e0e715964bd2f30505f94a654b1d9f
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34814
+Reviewed-on: https://android.intel.com:443/519785
+---
+ drivers/usb/dwc3/core.h   |  4 ++++
+ drivers/usb/dwc3/gadget.c | 40 ++++++++++++++++++++++++++++------------
+ 2 files changed, 32 insertions(+), 12 deletions(-)
+
+diff --git a/drivers/usb/dwc3/core.h b/drivers/usb/dwc3/core.h
+index 57d5b76..55e8f5e 100644
+--- a/drivers/usb/dwc3/core.h
++++ b/drivers/usb/dwc3/core.h
+@@ -871,6 +871,10 @@ struct dwc3_event_depevt {
+ #define DEPEVT_STATUS_CONTROL_DATA	1
+ #define DEPEVT_STATUS_CONTROL_STATUS	2
+ 
++/* In response to Start Transfer */
++#define DEPEVT_TRANSFER_NO_RESOURCE	1
++#define DEPEVT_TRANSFER_BUS_EXPIRY	2
++
+ 	u32	parameters:16;
+ } __packed;
+ 
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index ff7d66e..c7b0dce 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -362,23 +362,39 @@ int dwc3_send_gadget_ep_cmd(struct dwc3_ep *dep, unsigned cmd,
+ 	do {
+ 		reg = dwc3_readl(dep->regs, DWC3_DEPCMD);
+ 		if (!(reg & DWC3_DEPCMD_CMDACT)) {
+-			dwc3_trace(trace_dwc3_gadget, "Command Complete --> %d",
+-					DWC3_DEPCMD_STATUS(reg));
+-			if (DWC3_DEPCMD_STATUS(reg))
+-				break;
++			int cmd_status = DWC3_DEPCMD_STATUS(reg);
+ 
+-			/* SW issues START TRANSFER command to isochronous ep
+-			* with future frame interval. If future interval time
+-			* has already passed when core recieves command, core
+-			* will respond with an error(bit13 in Command complete
+-			* event. Hence return error in this case.
+-			*/
+-			if ((reg & 0x2000) && ((cmd & 0xF) == DWC3_DEPCMD_STARTTRANSFER)) {
++			dwc3_trace(trace_dwc3_gadget,
++					"Command Complete --> %d",
++					cmd_status);
++
++			switch (cmd_status) {
++			case 0:
++				ret = 0;
++				break;
++			case DEPEVT_TRANSFER_NO_RESOURCE:
++				dwc3_trace(trace_dwc3_gadget, "%s: no resource available");
++				ret = -EINVAL;
++				break;
++			case DEPEVT_TRANSFER_BUS_EXPIRY:
++				/*
++				 * SW issues START TRANSFER command to
++				 * isochronous ep with future frame interval. If
++				 * future interval time has already passed when
++				 * core receives the command, it will respond
++				 * with an error status of 'Bus Expiry'.
++				 *
++				 * Instead of always returning -EINVAL, let's
++				 * give a hint to the gadget driver that this is
++				 * the case by returning -EAGAIN.
++				 */
++				dwc3_trace(trace_dwc3_gadget, "%s: bus expiry");
+ 				ret = -EAGAIN;
+ 				break;
++			default:
++				dev_WARN(dwc->dev, "UNKNOWN cmd status\n");
+ 			}
+ 
+-			ret = 0;
+ 			break;
+ 		}
+ 
+-- 
+1.9.1
+

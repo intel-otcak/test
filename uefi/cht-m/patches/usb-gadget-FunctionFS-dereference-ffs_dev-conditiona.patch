@@ -1,0 +1,45 @@
+From 5c5b046c47049ac82f89398594c011ff43190f8e Mon Sep 17 00:00:00 2001
+From: Andrzej Pietrasiewicz <andrzej.p@samsung.com>
+Date: Mon, 13 Jan 2014 16:49:35 +0100
+Subject: [PATCH] usb: gadget: FunctionFS: dereference ffs_dev conditionally
+
+ffs_dev->ffs_release_dev_callback should be accessed only if ffs_dev
+is not NULL.
+
+Acked-by: Michal Nazarewicz <mina86@mina86.com>
+Signed-off-by: Andrzej Pietrasiewicz <andrzej.p@samsung.com>
+Signed-off-by: Felipe Balbi <balbi@ti.com>
+(cherry picked from commit ea365922f9eb2fb6fc0486f521748f19bfd5c502)
+
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-36040
+Change-Id: I4428c9cf46748a4c7d727cf4ca6d0a1bcce6739b
+Signed-off-by: Wiktor Wedler <wiktorx.wedler@intel.com>
+Reviewed-on: https://android.intel.com:443/525721
+---
+ drivers/usb/gadget/f_fs.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/usb/gadget/f_fs.c b/drivers/usb/gadget/f_fs.c
+index 73aa81b..0d185ea 100644
+--- a/drivers/usb/gadget/f_fs.c
++++ b/drivers/usb/gadget/f_fs.c
+@@ -2991,11 +2991,12 @@ static void ffs_release_dev(struct ffs_data *ffs_data)
+ 	ffs_dev_lock();
+ 
+ 	ffs_dev = ffs_data->private_data;
+-	if (ffs_dev)
++	if (ffs_dev) {
+ 		ffs_dev->mounted = false;
+-	
+-	if (ffs_dev->ffs_release_dev_callback)
+-		ffs_dev->ffs_release_dev_callback(ffs_dev);
++
++		if (ffs_dev->ffs_release_dev_callback)
++			ffs_dev->ffs_release_dev_callback(ffs_dev);
++	}
+ 
+ 	ffs_dev_unlock();
+ }
+-- 
+1.9.1
+

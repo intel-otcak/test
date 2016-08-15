@@ -1,0 +1,50 @@
+From 17cc204915672ceaad181893e2897dfc4d82e046 Mon Sep 17 00:00:00 2001
+From: Janusz Dziedzic <januszx.dziedzic@intel.com>
+Date: Tue, 31 May 2016 08:41:41 +0200
+Subject: [PATCH 78/78] usb: dwc3: play with last trb bit
+
+Improve performance by clearing last bit in trb
+when multi packtets in the queue.
+
+Finally after driver upgrade, disabling rndis multipacket
+features we get rndis TCP results:
+RX: 264Mbps
+TX: 265Mbps
+
+Before I have:
+RX: 111Mbps
+TX: 218Mbps
+
+Test done on CHT FFD.
+
+Change-Id: I8d12ee6d9b90b4a4fdce77300652fea0006eb649
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-19337
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+Reviewed-on: https://android.intel.com:443/511203
+---
+ drivers/usb/dwc3/gadget.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index 198bcf3..8e9c555 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -810,6 +810,15 @@ static void dwc3_prepare_one_trb(struct dwc3_ep *dep,
+ 			length, last ? " last" : "",
+ 			chain ? " chain" : "");
+ 
++	/*
++	 * When trying to issue Update Transfer, we can remove LST bit from
++	 * previous TRB and avoid a XferComplete
++	 */
++	if (dep->flags & DWC3_EP_BUSY) {
++		trb = &dep->trb_pool[dep->trb_enqueue - 1];
++		if (trb->ctrl & DWC3_TRB_CTRL_HWO)
++			trb->ctrl &= ~DWC3_TRB_CTRL_LST;
++	}
+ 
+ 	trb = &dep->trb_pool[dep->trb_enqueue];
+ 
+-- 
+1.9.1
+

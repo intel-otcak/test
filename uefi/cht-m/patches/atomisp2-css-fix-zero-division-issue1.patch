@@ -1,0 +1,46 @@
+From 38f77a4acd25f186e558f688bc91c15f873026fd Mon Sep 17 00:00:00 2001
+From: Ding Yunliang <yunliang.ding@intel.com>
+Date: Mon, 15 Feb 2016 15:31:52 +0800
+Subject: [PATCH 5/5] atomisp2: css fix zero division issue
+
+Original-Tracked_On: #H1504179158
+Change-Id: Iea103ffa84e0d9877a11d31ed6e49c963d19313d
+Signed-off-by: Ding Yunliang <yunliang.ding@intel.com>
+Reviewed-on: https://icggerrit.ir.intel.com/101599
+Reviewed-by: Bingbu Cao <bingbu.cao@intel.com>
+Approver: Bingbu Cao <bingbu.cao@intel.com>
+Reviewed-by: Vns Murthy Sristi <vns.murthy.sristi@intel.com>
+Reviewed-by: Zaikuo Wang <zaikuo.wang@intel.com>
+Build: Dessert M BXT RVP (SC)
+Integrator: WeiX Meng <weix.meng@intel.com>
+Reviewed-by: WeiX Meng <weix.meng@intel.com>
+Signed-off-by: Bin Han <bin.b.han@intel.com>
+Reviewed-on: https://icggerrit.ir.intel.com/106446
+Approver: Jing Tao <jing.tao@intel.com>
+Build: Dessert M CHT FFD (SC)
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-22830
+Signed-off-by: Tao Wei <wei.tao@intel.com>
+Reviewed-on: https://android.intel.com:443/480576
+---
+ .../camera/drivers/media/pci/atomisp2/css/sh_css_param_shading.c     | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_param_shading.c b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_param_shading.c
+index 1902abc..dff03f3 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_param_shading.c
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_param_shading.c
+@@ -114,6 +114,11 @@ crop_and_interpolate(unsigned int cropped_width,
+ 	out_cell_size = CEIL_DIV(padded_width, out_table->width - 1);
+ 	in_cell_size  = CEIL_DIV(sensor_width, table_width - 1);
+ 
++	if (0 == in_cell_size) {
++		assert(in_cell_size != 0);
++		return;
++	}
++
+ 	out_start_col = ((int)sensor_width - (int)cropped_width)/2 - left_padding;
+ 	out_start_row = ((int)sensor_height - (int)cropped_height)/2 - top_padding;
+ 	table_cell_w = (int)((table_width-1) * in_cell_size);
+-- 
+1.9.1
+

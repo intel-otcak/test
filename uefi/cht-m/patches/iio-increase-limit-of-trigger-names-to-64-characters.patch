@@ -1,0 +1,33 @@
+From da8be7a6ad245ae9ac03cf6b06d2fc1b1d6c21e8 Mon Sep 17 00:00:00 2001
+From: Mihai Serban <mihai.serban@intel.com>
+Date: Fri, 4 Sep 2015 17:50:21 +0300
+Subject: [PATCH 14/15] iio: increase limit of trigger names to 64 characters
+
+The current limit of 32 characters makes impossible usage of triggers with long
+names like hrtimer-lsm303dlhc_accel-hr-dev3.
+
+Change-Id: I0222de414c8920664a5d3a1333df6ddef9e98f96
+Signed-off-by: Mihai Serban <mihai.serban@intel.com>
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-27736
+Orig-Tracked-On: https://jira01.devtools.intel.com/browse/OAM-26476
+Reviewed-on: https://android.intel.com:443/490333
+---
+ drivers/iio/industrialio-configfs.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/iio/industrialio-configfs.c b/drivers/iio/industrialio-configfs.c
+index daf318c..3574221 100644
+--- a/drivers/iio/industrialio-configfs.c
++++ b/drivers/iio/industrialio-configfs.c
+@@ -17,7 +17,7 @@
+ #include <linux/iio/iio.h>
+ #include <linux/iio/sw_trigger.h>
+ 
+-#define MAX_NAME_LEN 32
++#define MAX_NAME_LEN 64
+ 
+ static struct config_group *trigger_make_group(struct config_group *group,
+ 					       const char *name)
+-- 
+1.9.1
+

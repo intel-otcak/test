@@ -1,0 +1,164 @@
+From 5afd63f0622f20ee87fda6fd00f98f58f2530f7c Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <balbi@ti.com>
+Date: Wed, 2 Dec 2015 10:06:45 -0600
+Subject: [PATCH 43/78] usb: dwc3: gadget: handle request->zero
+
+So far, dwc3 has always missed request->zero
+handling for every endpoint. Let's implement
+that so we can handle cases where transfer must
+be finished with a ZLP.
+
+Note that dwc3 is a little special. Even though
+we're dealing with a ZLP, we still need a buffer
+of wMaxPacketSize bytes; to hide that detail from
+every gadget driver, we have a preallocated buffer
+of 1024 bytes (biggest bulk size) to use (and
+share) among all endpoints.
+
+Reported-by: Ravi B <ravibabu@ti.com>
+Signed-off-by: Felipe Balbi <balbi@ti.com>
+(cherry picked from commit 04c03d10e507052cfce6910ddf34091196e79e1c)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Conflicts:
+	drivers/usb/dwc3/core.h
+
+Change-Id: I28c5447ad3179f7c1f355184122f8ca7fd1a40a5
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-19337
+Reviewed-on: https://android.intel.com:443/511168
+---
+ drivers/usb/dwc3/core.h   |  4 ++++
+ drivers/usb/dwc3/gadget.c | 50 +++++++++++++++++++++++++++++++++++++++++++++--
+ 2 files changed, 52 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/usb/dwc3/core.h b/drivers/usb/dwc3/core.h
+index 0d3ef04..e711c39e 100644
+--- a/drivers/usb/dwc3/core.h
++++ b/drivers/usb/dwc3/core.h
+@@ -37,6 +37,7 @@
+ #define DWC3_MSG_MAX	500
+ 
+ /* Global constants */
++#define DWC3_ZLP_BUF_SIZE	1024	/* size of a superspeed bulk */
+ #define DWC3_EP0_BOUNCE_SIZE	512
+ #define DWC3_ENDPOINTS_NUM	32
+ #define DWC3_XHCI_RESOURCES_NUM	2
+@@ -603,6 +604,7 @@ struct dwc3_scratchpad_array {
+  * @ctrl_req: usb control request which is used for ep0
+  * @ep0_trb: trb which is used for the ctrl_req
+  * @ep0_bounce: bounce buffer for ep0
++ * @zlp_buf: used when request->zero is set
+  * @setup_buf: used while precessing STD USB requests
+  * @ctrl_req_addr: dma address of ctrl_req
+  * @ep0_trb: dma address of ep0_trb
+@@ -652,6 +654,8 @@ struct dwc3 {
+ 	struct usb_ctrlrequest	*ctrl_req;
+ 	struct dwc3_trb		*ep0_trb;
+ 	void			*ep0_bounce;
++	void			*zlp_buf;
++	void			*scratchbuf;
+ 	u8			*setup_buf;
+ 	dma_addr_t		ctrl_req_addr;
+ 	dma_addr_t		ep0_trb_addr;
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index e62411b..2257a1e 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -1204,6 +1204,32 @@ out:
+ 	return ret;
+ }
+ 
++static void __dwc3_gadget_ep_zlp_complete(struct usb_ep *ep,
++		struct usb_request *request)
++{
++	dwc3_gadget_ep_free_request(ep, request);
++}
++
++static int __dwc3_gadget_ep_queue_zlp(struct dwc3 *dwc, struct dwc3_ep *dep)
++{
++	struct dwc3_request		*req;
++	struct usb_request		*request;
++	struct usb_ep			*ep = &dep->endpoint;
++
++	dwc3_trace(trace_dwc3_gadget, "queueing ZLP\n");
++	request = dwc3_gadget_ep_alloc_request(ep, GFP_ATOMIC);
++	if (!request)
++		return -ENOMEM;
++
++	request->length = 0;
++	request->buf = dwc->zlp_buf;
++	request->complete = __dwc3_gadget_ep_zlp_complete;
++
++	req = to_dwc3_request(request);
++
++	return __dwc3_gadget_ep_queue(dep, req);
++}
++
+ static int dwc3_gadget_ep_queue(struct usb_ep *ep, struct usb_request *request,
+ 	gfp_t gfp_flags)
+ {
+@@ -1217,6 +1243,16 @@ static int dwc3_gadget_ep_queue(struct usb_ep *ep, struct usb_request *request,
+ 
+ 	spin_lock_irqsave(&dwc->lock, flags);
+ 	ret = __dwc3_gadget_ep_queue(dep, req);
++
++	/*
++	 * Okay, here's the thing, if gadget driver has requested for a ZLP by
++	 * setting request->zero, instead of doing magic, we will just queue an
++	 * extra usb_request ourselves so that it gets handled the same way as
++	 * any other request.
++	 */
++	if (ret == 0 && request->zero && (request->length % ep->maxpacket == 0))
++		ret = __dwc3_gadget_ep_queue_zlp(dwc, dep);
++
+ 	spin_unlock_irqrestore(&dwc->lock, flags);
+ 
+ 	return ret;
+@@ -2886,6 +2922,12 @@ int dwc3_gadget_init(struct dwc3 *dwc)
+ 		goto err3;
+ 	}
+ 
++	dwc->zlp_buf = kzalloc(DWC3_ZLP_BUF_SIZE, GFP_KERNEL);
++	if (!dwc->zlp_buf) {
++		ret = -ENOMEM;
++		goto err4;
++	}
++
+ 	dwc->gadget.ops			= &dwc3_gadget_ops;
+ 	dwc->gadget.max_speed		= USB_SPEED_SUPER;
+ 	dwc->gadget.speed		= USB_SPEED_UNKNOWN;
+@@ -2905,18 +2947,21 @@ int dwc3_gadget_init(struct dwc3 *dwc)
+ 
+ 	ret = dwc3_gadget_init_endpoints(dwc);
+ 	if (ret)
+-		goto err4;
++		goto err5;
+ 
+ 	ret = usb_add_gadget_udc(dwc->dev, &dwc->gadget);
+ 	if (ret) {
+ 		dev_err(dwc->dev, "failed to register udc\n");
+-		goto err4;
++		goto err5;
+ 	}
+ 
+ 	INIT_DELAYED_WORK(&dwc->watchdog, dwc3_gadget_watchdog);
+ 
+ 	return 0;
+ 
++err5:
++	kfree(dwc->zlp_buf);
++
+ err4:
+ 	dwc3_gadget_free_endpoints(dwc);
+ 	dma_free_coherent(dwc->dev, DWC3_EP0_BOUNCE_SIZE,
+@@ -2949,6 +2994,7 @@ void dwc3_gadget_exit(struct dwc3 *dwc)
+ 			dwc->ep0_bounce, dwc->ep0_bounce_addr);
+ 
+ 	kfree(dwc->setup_buf);
++	kfree(dwc->zlp_buf);
+ 
+ 	dma_free_coherent(dwc->dev, sizeof(*dwc->ep0_trb),
+ 			dwc->ep0_trb, dwc->ep0_trb_addr);
+-- 
+1.9.1
+

@@ -1,0 +1,108 @@
+From b34f8d02b77f5195babcf73a690c8d2bb902a65a Mon Sep 17 00:00:00 2001
+From: Bin Han <bin.b.han@intel.com>
+Date: Tue, 16 Feb 2016 10:11:50 +0800
+Subject: [PATCH 2/3] ov8858_btns: Modify 1640x926 setting to 1640x932
+
+1640x932 better aligns to the 720P(with 16x16 padding) video
+recording aspect ratio.
+
+Change-Id: I535e253dd331bc605ad9b071ecdfcac9c890afd2
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-20625
+Original-Tracked-On: #H1504157003
+Signed-off-by: Bin Han <bin.b.han@intel.com>
+Reviewed-on: https://icggerrit.ir.intel.com/101742
+Approver: Tian Shu Qiu <tian.shu.qiu@intel.com>
+Validation-Android: Wei Tao <wei.tao@intel.com>
+Reviewed-by: HaiqiangX Yao <haiqiangx.yao@intel.com>
+Reviewed-by: DaleiX Liu <daleix.liu@intel.com>
+Integrator: WeiX Meng <weix.meng@intel.com>
+Reviewed-by: WeiX Meng <weix.meng@intel.com>
+Signed-off-by: Yang Fan F <fan.f.yang@intel.com>
+Reviewed-on: https://android.intel.com:443/471917
+---
+ .../camera/drivers/media/i2c/ov8858_btns.h         | 26 +++++++++++-----------
+ 1 file changed, 13 insertions(+), 13 deletions(-)
+
+diff --git a/drivers/external_drivers/camera/drivers/media/i2c/ov8858_btns.h b/drivers/external_drivers/camera/drivers/media/i2c/ov8858_btns.h
+index 0574920..660343b 100644
+--- a/drivers/external_drivers/camera/drivers/media/i2c/ov8858_btns.h
++++ b/drivers/external_drivers/camera/drivers/media/i2c/ov8858_btns.h
+@@ -1004,7 +1004,7 @@ static const struct ov8858_reg ov8858_1640x1096[] = {
+ };
+ 
+ 
+-static const struct ov8858_reg ov8858_1640x926[] = {
++static const struct ov8858_reg ov8858_1640x932[] = {
+ 	{OV8858_8BIT, 0x0100, 0x00}, /* software_standby */
+ 	{OV8858_8BIT, 0x3841, 0x00},
+ 	{OV8858_8BIT, 0x3800, 0x00}, /* h_crop_start high */
+@@ -1015,10 +1015,10 @@ static const struct ov8858_reg ov8858_1640x926[] = {
+ 	{OV8858_8BIT, 0x3805, 0xDF}, /* h_crop_end low */
+ 	{OV8858_8BIT, 0x3806, 0x09}, /* v_crop_end high */
+ 	{OV8858_8BIT, 0x3807, 0xAF}, /* v_crop_end low */
+-	{OV8858_8BIT, 0x3808, 0x06}, /* h_output_size high 1640 x 926 */
++	{OV8858_8BIT, 0x3808, 0x06}, /* h_output_size high 1640 x 932 */
+ 	{OV8858_8BIT, 0x3809, 0x68}, /* h_output_size low */
+ 	{OV8858_8BIT, 0x380A, 0x03}, /* v_output_size high */
+-	{OV8858_8BIT, 0x380B, 0x9E}, /* v_output_size low */
++	{OV8858_8BIT, 0x380B, 0xA4}, /* v_output_size low */
+ 	{OV8858_8BIT, 0x380C, 0x0E}, /* horizontal timing size high */
+ 	{OV8858_8BIT, 0x380D, 0xE0}, /* horizontal timing size low */
+ 	{OV8858_8BIT, 0x380E, 0x04}, /* vertical timing size high */
+@@ -1026,7 +1026,7 @@ static const struct ov8858_reg ov8858_1640x926[] = {
+ 	{OV8858_8BIT, 0x3810, 0x00},
+ 	{OV8858_8BIT, 0x3811, 0x03},
+ 	{OV8858_8BIT, 0x3812, 0x00},
+-	{OV8858_8BIT, 0x3813, 0x9C},
++	{OV8858_8BIT, 0x3813, 0x9A},
+ 	{OV8858_8BIT, 0x3814, 0x03}, /* h_odd_inc */
+ 	{OV8858_8BIT, 0x3815, 0x01}, /* h_even_inc */
+ 	{OV8858_8BIT, 0x3821, 0x61}, /* format2 */
+@@ -1056,11 +1056,11 @@ static const struct ov8858_reg ov8858_1640x926[] = {
+ 
+ static struct ov8858_resolution ov8858_res_preview[] = {
+ 	{
+-		.desc = "ov8858_1640x926_PREVIEW",
++		.desc = "ov8858_1640x932_PREVIEW",
+ 		.width = 1640,
+-		.height = 926,
++		.height = 932,
+ 		.used = 0,
+-		.regs = ov8858_1640x926,
++		.regs = ov8858_1640x932,
+ 		.bin_factor_x = 0,
+ 		.bin_factor_y = 0,
+ 		.skip_frames = 0,
+@@ -1173,11 +1173,11 @@ static struct ov8858_resolution ov8858_res_still[] = {
+ 		},
+ 	},
+ 	{
+-		.desc = "ov8858_1640x926_STILL",
++		.desc = "ov8858_1640x932_STILL",
+ 		.width = 1640,
+-		.height = 926,
++		.height = 932,
+ 		.used = 0,
+-		.regs = ov8858_1640x926,
++		.regs = ov8858_1640x932,
+ 		.bin_factor_x = 0,
+ 		.bin_factor_y = 0,
+ 		.skip_frames = 1,
+@@ -1234,11 +1234,11 @@ static struct ov8858_resolution ov8858_res_still[] = {
+ 
+ static struct ov8858_resolution ov8858_res_video[] = {
+ 	{
+-		.desc = "ov8858_1640x926_VIDEO",
++		.desc = "ov8858_1640x932_VIDEO",
+ 		.width = 1640,
+-		.height = 926,
++		.height = 932,
+ 		.used = 0,
+-		.regs = ov8858_1640x926,
++		.regs = ov8858_1640x932,
+ 		.bin_factor_x = 0,
+ 		.bin_factor_y = 0,
+ 		.skip_frames = 1,
+-- 
+1.9.1
+

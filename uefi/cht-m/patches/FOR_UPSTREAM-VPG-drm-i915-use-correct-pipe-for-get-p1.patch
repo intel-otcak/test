@@ -1,0 +1,38 @@
+From f5ea0da4d8ca1f7c6aea6d26edb601cce66cd098 Mon Sep 17 00:00:00 2001
+From: "Thulasimani,Sivakumar" <sivakumar.thulasimani@intel.com>
+Date: Wed, 23 Mar 2016 17:17:18 +0530
+Subject: [PATCH 22/41] FOR_UPSTREAM [VPG]: drm/i915: use correct pipe for
+ get/put in dp aux
+
+get/put calls for power domain had been hardcoded domain in CHT.
+This patch corrects this by using the correct domain based on the
+call to intel_dp_aux_ch. Since a call to intel_dp_aux_ch can be
+from detect path during which time a pipe may not be associated
+with the encoder/connector we reverse calculate using the
+other displays enumerated to identify the pipe the request
+is made for.
+
+Change-Id: I75b83df01432221ca222a125e3dc1b34fb48ce33
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-31683
+Signed-off-by: Sivakumar Thulasimani <sivakumar.thulasimani@intel.com>
+Reviewed-on: https://android.intel.com:443/498188
+Reviewed-on: https://android.intel.com:443/504758
+---
+ drivers/gpu/drm/i915/intel_dp.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/gpu/drm/i915/intel_dp.c b/drivers/gpu/drm/i915/intel_dp.c
+index a9b177d..79c6997 100644
+--- a/drivers/gpu/drm/i915/intel_dp.c
++++ b/drivers/gpu/drm/i915/intel_dp.c
+@@ -837,6 +837,7 @@ intel_dp_aux_ch(struct intel_dp *intel_dp,
+ 
+ 	ret = recv_bytes;
+ out:
++	pm_qos_update_request(&dev_priv->pm_qos, PM_QOS_DEFAULT_VALUE);
+ 	intel_display_power_put(dev_priv, pipe);
+ 
+ 	if (vdd)
+-- 
+1.9.1
+

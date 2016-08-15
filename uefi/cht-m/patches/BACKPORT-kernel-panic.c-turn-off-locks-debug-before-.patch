@@ -1,0 +1,57 @@
+From 4341c2e0f839dd96fe7f679e9601d46b55fac6b0 Mon Sep 17 00:00:00 2001
+From: Vitaly Kuznetsov <vkuznets@redhat.com>
+Date: Fri, 20 Nov 2015 15:57:24 -0800
+Subject: [PATCH 2/3] [BACKPORT] kernel/panic.c: turn off locks debug before
+ releasing console lock
+
+Commit 08d78658f393 ("panic: release stale console lock to always get the
+logbuf printed out") introduced an unwanted bad unlock balance report when
+panic() is called directly and not from OOPS (e.g.  from out_of_memory()).
+The difference is that in case of OOPS we disable locks debug in
+oops_enter() and on direct panic call nobody does that.
+
+Fixes: 08d78658f393 ("panic: release stale console lock to always get the logbuf printed out")
+Reported-by: kernel test robot <ying.huang@linux.intel.com>
+Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
+Cc: HATAYAMA Daisuke <d.hatayama@jp.fujitsu.com>
+Cc: Masami Hiramatsu <masami.hiramatsu.pt@hitachi.com>
+Cc: Jiri Kosina <jkosina@suse.cz>
+Cc: Baoquan He <bhe@redhat.com>
+Cc: Prarit Bhargava <prarit@redhat.com>
+Cc: Xie XiuQi <xiexiuqi@huawei.com>
+Cc: Seth Jennings <sjenning@redhat.com>
+Cc: "K. Y. Srinivasan" <kys@microsoft.com>
+Cc: Jan Kara <jack@suse.cz>
+Cc: Petr Mladek <pmladek@suse.cz>
+Cc: Yasuaki Ishimatsu <isimatu.yasuaki@jp.fujitsu.com>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+
+Change-Id: I9008f4d8791360a0f2ab1dad00e903c443aa7711
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-33203
+Signed-off-by: Traian Schiau <traianx.schiau@intel.com>
+Reviewed-on: https://android.intel.com:443/511906
+---
+ kernel/panic.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/kernel/panic.c b/kernel/panic.c
+index a6fff26..0ed2f54 100644
+--- a/kernel/panic.c
++++ b/kernel/panic.c
+@@ -141,8 +141,11 @@ void panic(const char *fmt, ...)
+ 	 * We may have ended up stopping the CPU holding the lock (in
+ 	 * smp_send_stop()) while still having some valuable data in the console
+ 	 * buffer.  Try to acquire the lock then release it regardless of the
+-	 * result.  The release will also print the buffers out.
++	 * result.  The release will also print the buffers out.  Locks debug
++	 * should be disabled to avoid reporting bad unlock balance when
++	 * panic() is not being callled from OOPS.
+ 	 */
++	debug_locks_off();
+ 	console_trylock();
+ 	console_unlock();
+ 
+-- 
+1.9.1
+

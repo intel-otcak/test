@@ -1,0 +1,43 @@
+From e854b17eec6ef0146ec136199359c9406bb74cc6 Mon Sep 17 00:00:00 2001
+From: Simon Dubray <simonx.dubray@intel.com>
+Date: Tue, 10 May 2016 13:46:27 +0200
+Subject: [PATCH] [BT] Release the wakelock in enter_lpm
+
+After the merge of commit 2a479acd235283835a2fc82f9a439963bc4497e5
+the wakelock is no longer released and the uart never disabled
+so all sleep modes are broken.
+
+Change-Id: Ib691c1cef0191d8dcf95c551defc5a93bd85eddd
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-29543
+Signed-off-by: Simon Dubray <simonx.dubray@intel.com>
+Reviewed-on: https://android.intel.com:443/504543
+---
+ drivers/misc/bt_lpm/bt_lpm.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/misc/bt_lpm/bt_lpm.c b/drivers/misc/bt_lpm/bt_lpm.c
+index 30a0083..285a9bb 100644
+--- a/drivers/misc/bt_lpm/bt_lpm.c
++++ b/drivers/misc/bt_lpm/bt_lpm.c
+@@ -29,8 +29,8 @@
+ #include <linux/serial_hsu.h>
+ 
+ enum {
+-	gpio_enable_bt_acpi_idx,
+ 	gpio_wake_acpi_idx,
++	gpio_enable_bt_acpi_idx,
+ 	host_wake_acpi_idx
+ };
+ static struct gpio_desc *bt_lpm_gpiod;
+@@ -240,6 +240,8 @@ static enum hrtimer_restart enter_lpm(struct hrtimer *timer)
+ {
+ 	pr_debug("%s\n", __func__);
+ 
++	set_wake_locked(0);
++
+ 	return HRTIMER_NORESTART;
+ }
+ 
+-- 
+1.9.1
+

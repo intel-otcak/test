@@ -1,0 +1,36 @@
+From 89f46e37823a81783098fa9c824418ce42bc6b58 Mon Sep 17 00:00:00 2001
+From: Sami Tolvanen <samitolvanen@google.com>
+Date: Fri, 17 Jun 2016 11:22:03 -0700
+Subject: [PATCH 2/3] ANDROID: dm verity fec: fix RS block calculation
+
+A call to do_div was changed in Linux 4.5 to div64_u64 in
+verity_fec_decode, which broke RS block calculation due to
+incompatible semantics. This change fixes the computation.
+
+Bug: 21893453
+Change-Id: Idb88b901e0209c2cccc9c0796689f780592d58f9
+Signed-off-by: Sami Tolvanen <samitolvanen@google.com>
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-35882
+Reviewed-on: https://android.intel.com:443/525188
+---
+ drivers/md/dm-verity-fec.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/drivers/md/dm-verity-fec.c b/drivers/md/dm-verity-fec.c
+index 96e5ca4..c24a434 100644
+--- a/drivers/md/dm-verity-fec.c
++++ b/drivers/md/dm-verity-fec.c
+@@ -463,9 +463,7 @@ int verity_fec_decode(struct dm_verity *v, struct dm_verity_io *io,
+ 	 */
+ 
+ 	offset = block << v->data_dev_block_bits;
+-
+-	res = offset;
+-	div64_u64(res, v->fec->rounds << v->data_dev_block_bits);
++	res = div64_u64(offset, v->fec->rounds << v->data_dev_block_bits);
+ 
+ 	/*
+ 	 * The base RS block we can feed to the interleaver to find out all
+-- 
+1.9.1
+

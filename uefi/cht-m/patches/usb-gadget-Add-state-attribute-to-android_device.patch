@@ -1,0 +1,131 @@
+From a0c9695d511166730e80dbcc2acffd8c65a4970c Mon Sep 17 00:00:00 2001
+From: Badhri Jagan Sridharan <Badhri@google.com>
+Date: Tue, 14 Jul 2015 15:46:11 -0700
+Subject: [PATCH 02/14] usb:gadget:Add "state" attribute to android_device
+
+Added a device attribute to android_device to
+determine USB_GADGET's state
+
+Signed-off-by: Badhri Jagan Sridharan <Badhri@google.com>
+
+(cherry picked from commit 94157a3c76130b1f4a24b11a6f99cec32c68fb4a)
+
+Signed-off-by: Krzysztof Adamski <krzysztofx.adamski@intel.com>
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-33009
+Change-Id: I17f8903120df96bf2f4bf441940b53a87b818230
+Reviewed-on: https://android.intel.com:443/514008
+---
+ drivers/usb/gadget/configfs.c | 66 ++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 65 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/usb/gadget/configfs.c b/drivers/usb/gadget/configfs.c
+index 4ec22fe..db3414d 100644
+--- a/drivers/usb/gadget/configfs.c
++++ b/drivers/usb/gadget/configfs.c
+@@ -1070,11 +1070,49 @@ static const struct usb_gadget_driver configfs_driver_template = {
+ 	},
+ };
+ 
++#ifdef CONFIG_USB_CONFIGFS_UEVENT
++static ssize_t state_show(struct device *pdev, struct device_attribute *attr,
++			char *buf)
++{
++	struct gadget_info *dev = dev_get_drvdata(pdev);
++	struct usb_composite_dev *cdev;
++	char *state = "DISCONNECTED";
++	unsigned long flags;
++
++	if (!dev)
++		goto out;
++
++	cdev = &dev->cdev;
++
++	if (!cdev)
++		goto out;
++
++	spin_lock_irqsave(&cdev->lock, flags);
++	if (cdev->config)
++		state = "CONFIGURED";
++	else if (dev->connected)
++		state = "CONNECTED";
++	spin_unlock_irqrestore(&cdev->lock, flags);
++out:
++	return sprintf(buf, "%s\n", state);
++}
++
++static DEVICE_ATTR(state, S_IRUGO, state_show, NULL);
++
++static struct device_attribute *android_usb_attributes[] = {
++	&dev_attr_state,
++	NULL
++};
++#endif
++
+ static struct config_group *gadgets_make(
+ 		struct config_group *group,
+ 		const char *name)
+ {
+ 	struct gadget_info *gi;
++	struct device_attribute **attrs;
++	struct device_attribute *attr;
++	int err;
+ 
+ 	gi = kzalloc(sizeof(*gi), GFP_KERNEL);
+ 	if (!gi)
+@@ -1117,10 +1155,19 @@ static struct config_group *gadgets_make(
+ 				MKDEV(0, 0), NULL, "android0");
+ 	if (IS_ERR(android_device))
+ 		goto err;
++
++	dev_set_drvdata(android_device, gi);
++
++	attrs = android_usb_attributes;
++	while ((attr = *attrs++)) {
++		err = device_create_file(android_device, attr);
++		if (err)
++			goto err1;
++	}
+ #endif
+ 
+ 	if (!gi->composite.gadget_driver.function)
+-		goto err;
++		goto err1;
+ 
+ #ifdef CONFIG_USB_OTG
+ 	gi->otg.bLength = sizeof(struct usb_otg_descriptor);
+@@ -1131,6 +1178,16 @@ static struct config_group *gadgets_make(
+ 	config_group_init_type_name(&gi->group, name,
+ 				&gadget_root_type);
+ 	return &gi->group;
++
++err1:
++#ifdef CONFIG_USB_CONFIGFS_UEVENT
++	attrs = android_usb_attributes;
++	while ((attr = *attrs++))
++		device_remove_file(android_device, attr);
++
++	device_destroy(android_device->class,
++				android_device->devt);
++#endif
+ err:
+ 	kfree(gi);
+ 	return ERR_PTR(-ENOMEM);
+@@ -1138,8 +1195,15 @@ err:
+ 
+ static void gadgets_drop(struct config_group *group, struct config_item *item)
+ {
++	struct device_attribute **attrs;
++	struct device_attribute *attr;
++
+ 	config_item_put(item);
++
+ #ifdef CONFIG_USB_CONFIGFS_UEVENT
++	attrs = android_usb_attributes;
++	while ((attr = *attrs++))
++		device_remove_file(android_device, attr);
+ 	device_destroy(android_device->class, android_device->devt);
+ #endif
+ }
+-- 
+1.9.1
+

@@ -1,0 +1,109 @@
+From 406a3c864e4487c7d0a64c33c08b4e1264e229d0 Mon Sep 17 00:00:00 2001
+From: Mikulas Patocka <mpatocka@redhat.com>
+Date: Fri, 13 Feb 2015 08:25:26 -0500
+Subject: [PATCH 709/769] UPSTREAM: dm crypt: remove unused io_pool and
+ _crypt_io_pool
+
+(cherry pick from commit 94f5e0243c48aa01441c987743dc468e2d6eaca2)
+
+The previous commit ("dm crypt: don't allocate pages for a partial
+request") stopped using the io_pool slab mempool and backing
+_crypt_io_pool kmem cache.
+
+Signed-off-by: Mikulas Patocka <mpatocka@redhat.com>
+Signed-off-by: Mike Snitzer <snitzer@redhat.com>
+Bug: 25392275
+Change-Id: I1f23202cd41ff1f4ec65925489f7ae20fe8a4036
+---
+ drivers/md/dm-crypt.c | 24 ++----------------------
+ 1 file changed, 2 insertions(+), 22 deletions(-)
+
+diff --git a/drivers/md/dm-crypt.c b/drivers/md/dm-crypt.c
+index 4db3075..a438729 100644
+--- a/drivers/md/dm-crypt.c
++++ b/drivers/md/dm-crypt.c
+@@ -120,7 +120,6 @@ struct crypt_config {
+ 	 * pool for per bio private data, crypto requests and
+ 	 * encryption requeusts/buffer pages
+ 	 */
+-	mempool_t *io_pool;
+ 	mempool_t *req_pool;
+ 	mempool_t *page_pool;
+ 	struct bio_set *bs;
+@@ -173,8 +172,6 @@ struct crypt_config {
+ 
+ #define MIN_IOS        16
+ 
+-static struct kmem_cache *_crypt_io_pool;
+-
+ static void clone_init(struct dm_crypt_io *, struct bio *);
+ static void kcryptd_queue_crypt(struct dm_crypt_io *io);
+ static u8 *iv_of_dmreq(struct crypt_config *cc, struct dm_crypt_request *dmreq);
+@@ -1062,8 +1059,6 @@ static void crypt_dec_pending(struct dm_crypt_io *io)
+ 
+ 	if (io->ctx.req)
+ 		crypt_free_req(cc, io->ctx.req, base_bio);
+-	if (io != dm_per_bio_data(base_bio, cc->per_bio_data_size))
+-		mempool_free(io, cc->io_pool);
+ 
+ 	bio_endio(base_bio, error);
+ }
+@@ -1451,8 +1446,6 @@ static void crypt_dtr(struct dm_target *ti)
+ 		mempool_destroy(cc->page_pool);
+ 	if (cc->req_pool)
+ 		mempool_destroy(cc->req_pool);
+-	if (cc->io_pool)
+-		mempool_destroy(cc->io_pool);
+ 
+ 	if (cc->iv_gen_ops && cc->iv_gen_ops->dtr)
+ 		cc->iv_gen_ops->dtr(cc);
+@@ -1666,13 +1659,6 @@ static int crypt_ctr(struct dm_target *ti, unsigned int argc, char **argv)
+ 	if (ret < 0)
+ 		goto bad;
+ 
+-	ret = -ENOMEM;
+-	cc->io_pool = mempool_create_slab_pool(MIN_IOS, _crypt_io_pool);
+-	if (!cc->io_pool) {
+-		ti->error = "Cannot allocate crypt io mempool";
+-		goto bad;
+-	}
+-
+ 	cc->dmreq_start = sizeof(struct ablkcipher_request);
+ 	cc->dmreq_start += crypto_ablkcipher_reqsize(any_tfm(cc));
+ 	cc->dmreq_start = ALIGN(cc->dmreq_start, __alignof__(struct dm_crypt_request));
+@@ -1690,6 +1676,7 @@ static int crypt_ctr(struct dm_target *ti, unsigned int argc, char **argv)
+ 		iv_size_padding = crypto_ablkcipher_alignmask(any_tfm(cc));
+ 	}
+ 
++	ret = -ENOMEM;
+ 	cc->req_pool = mempool_create_kmalloc_pool(MIN_IOS, cc->dmreq_start +
+ 			sizeof(struct dm_crypt_request) + iv_size_padding + cc->iv_size);
+ 	if (!cc->req_pool) {
+@@ -1952,15 +1939,9 @@ static int __init dm_crypt_init(void)
+ {
+ 	int r;
+ 
+-	_crypt_io_pool = KMEM_CACHE(dm_crypt_io, 0);
+-	if (!_crypt_io_pool)
+-		return -ENOMEM;
+-
+ 	r = dm_register_target(&crypt_target);
+-	if (r < 0) {
++	if (r < 0)
+ 		DMERR("register failed %d", r);
+-		kmem_cache_destroy(_crypt_io_pool);
+-	}
+ 
+ 	return r;
+ }
+@@ -1968,7 +1949,6 @@ static int __init dm_crypt_init(void)
+ static void __exit dm_crypt_exit(void)
+ {
+ 	dm_unregister_target(&crypt_target);
+-	kmem_cache_destroy(_crypt_io_pool);
+ }
+ 
+ module_init(dm_crypt_init);
+-- 
+1.9.1
+

@@ -1,0 +1,96 @@
+From 17228879bcaee4afc2731f6146db5b351b8dee4c Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <felipe.balbi@linux.intel.com>
+Date: Tue, 5 Apr 2016 12:47:15 +0300
+Subject: [PATCH 63/78] usb: dwc3: get rid of DWC3_TRB_MASK
+
+instead of using a bitwise and, let's rely on the %
+operator since that's a lot more clear. Also, GCC
+will optimize % 256 to nothing anyway.
+
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit 70fdb273db37196e9e5d292d5778a99fededb32f)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: Icd4771d95165d8441cb3134d05b9c37c69683b1a
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-19337
+Reviewed-on: https://android.intel.com:443/511188
+---
+ drivers/usb/dwc3/core.h   |  1 -
+ drivers/usb/dwc3/gadget.c | 16 ++++++++--------
+ 2 files changed, 8 insertions(+), 9 deletions(-)
+
+diff --git a/drivers/usb/dwc3/core.h b/drivers/usb/dwc3/core.h
+index a1d533d..cc1a1d4 100644
+--- a/drivers/usb/dwc3/core.h
++++ b/drivers/usb/dwc3/core.h
+@@ -392,7 +392,6 @@ struct dwc3_event_buffer {
+ #define DWC3_EP_DIRECTION_RX	false
+ 
+ #define DWC3_TRB_NUM		256
+-#define DWC3_TRB_MASK		(DWC3_TRB_NUM - 1)
+ 
+ /**
+  * struct dwc3_ep - device side endpoint representation
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index f0071e2..5a2adb1 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -234,8 +234,8 @@ void dwc3_gadget_giveback(struct dwc3_ep *dep, struct dwc3_request *req,
+ 			 * DWC3_TRBCTL_LINK_TRB because it points the TRB we
+ 			 * just completed (not the LINK TRB).
+ 			 */
+-			if (((dep->trb_dequeue & DWC3_TRB_MASK) ==
+-				DWC3_TRB_NUM- 1) &&
++			if (((dep->trb_dequeue % DWC3_TRB_NUM) ==
++				DWC3_TRB_NUM - 1) &&
+ 				usb_endpoint_xfer_isoc(dep->endpoint.desc))
+ 				dep->trb_dequeue++;
+ 		} while(++i < req->request.num_mapped_sgs);
+@@ -786,18 +786,18 @@ static void dwc3_prepare_one_trb(struct dwc3_ep *dep,
+ 			chain ? " chain" : "");
+ 
+ 
+-	trb = &dep->trb_pool[dep->trb_enqueue & DWC3_TRB_MASK];
++	trb = &dep->trb_pool[dep->trb_enqueue % DWC3_TRB_NUM];
+ 
+ 	if (!req->trb) {
+ 		dwc3_gadget_move_started_request(req);
+ 		req->trb = trb;
+ 		req->trb_dma = dwc3_trb_dma_offset(dep, trb);
+-		req->first_trb_index = dep->trb_enqueue & DWC3_TRB_MASK;
++		req->first_trb_index = dep->trb_enqueue % DWC3_TRB_NUM;
+ 	}
+ 
+ 	dep->trb_enqueue++;
+ 	/* Skip the LINK-TRB on ISOC */
+-	if (((dep->trb_enqueue & DWC3_TRB_MASK) == DWC3_TRB_NUM - 1) &&
++	if (((dep->trb_enqueue % DWC3_TRB_NUM) == DWC3_TRB_NUM - 1) &&
+ 			usb_endpoint_xfer_isoc(dep->endpoint.desc))
+ 		dep->trb_enqueue++;
+ 
+@@ -871,11 +871,11 @@ static void dwc3_prepare_trbs(struct dwc3_ep *dep, bool starting)
+ 	BUILD_BUG_ON_NOT_POWER_OF_2(DWC3_TRB_NUM);
+ 
+ 	/* the first request must not be queued */
+-	trbs_left = (dep->trb_dequeue - dep->trb_enqueue) & DWC3_TRB_MASK;
++	trbs_left = (dep->trb_dequeue - dep->trb_enqueue) % DWC3_TRB_NUM;
+ 
+ 	/* Can't wrap around on a non-isoc EP since there's no link TRB */
+ 	if (!usb_endpoint_xfer_isoc(dep->endpoint.desc)) {
+-		max = DWC3_TRB_NUM - (dep->trb_enqueue & DWC3_TRB_MASK);
++		max = DWC3_TRB_NUM - (dep->trb_enqueue % DWC3_TRB_NUM);
+ 		if (trbs_left > max)
+ 			trbs_left = max;
+ 	}
+@@ -1048,7 +1048,7 @@ static int __dwc3_gadget_kick_transfer(struct dwc3_ep *dep, u16 cmd_param,
+ 						 req->request.num_mapped_sgs;
+ 				else
+ 					dep->trb_dequeue++;
+-				if ((dep->trb_dequeue & DWC3_TRB_MASK) ==
++				if ((dep->trb_dequeue % DWC3_TRB_NUM) ==
+ 							DWC3_TRB_NUM - 1)
+ 					dep->trb_dequeue++;
+ 			}
+-- 
+1.9.1
+

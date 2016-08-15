@@ -1,0 +1,38 @@
+From cc72f2fc486ec9b5b48425847114fe3e56bfc004 Mon Sep 17 00:00:00 2001
+From: Janusz Dziedzic <januszx.dziedzic@intel.com>
+Date: Tue, 31 May 2016 08:37:32 +0200
+Subject: [PATCH 76/78] usb: gadget: rndis: Disable multipacket allocation
+
+While we don't need multipacket feature, disable
+larget skb allocation.
+
+Change-Id: I05bac22340fb6626d8b70e8ccae374f82a563b3e
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-19337
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+Reviewed-on: https://android.intel.com:443/511201
+---
+ drivers/usb/gadget/f_rndis.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/usb/gadget/f_rndis.c b/drivers/usb/gadget/f_rndis.c
+index 4a53d85..2de41f5 100644
+--- a/drivers/usb/gadget/f_rndis.c
++++ b/drivers/usb/gadget/f_rndis.c
+@@ -69,12 +69,12 @@
+  *   - MS-Windows drivers sometimes emit undocumented requests.
+  */
+ 
+-static bool rndis_multipacket_dl_disable;
++static bool rndis_multipacket_dl_disable = true;
+ module_param(rndis_multipacket_dl_disable, bool, S_IRUGO|S_IWUSR);
+ MODULE_PARM_DESC(rndis_multipacket_dl_disable,
+ 	"Disable RNDIS Multi-packet support in DownLink");
+ 
+-static unsigned int rndis_ul_max_pkt_per_xfer = 3;
++static unsigned int rndis_ul_max_pkt_per_xfer = 1;
+ module_param(rndis_ul_max_pkt_per_xfer, uint, S_IRUGO | S_IWUSR);
+ MODULE_PARM_DESC(rndis_ul_max_pkt_per_xfer,
+        "Maximum packets per transfer for UL aggregation");
+-- 
+1.9.1
+

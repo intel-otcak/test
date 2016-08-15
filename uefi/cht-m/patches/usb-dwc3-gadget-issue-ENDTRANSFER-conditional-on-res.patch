@@ -1,0 +1,64 @@
+From 5e4735ddd27e351b8c18ba44dff2cc1ce6d4128f Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <felipe.balbi@linux.intel.com>
+Date: Tue, 21 Jun 2016 10:32:02 +0300
+Subject: [PATCH 41/41] usb: dwc3: gadget: issue ENDTRANSFER conditional on
+ resource_index
+
+Because of recent changes to transfer handling on
+DWC3, we will not get XferComplete unless we
+completely fill up our TRB ring. This means that we
+might get a Reset or Disconnect without getting a
+XferComplete first.
+
+In order to correctly release our allocated Transfer
+Resource, we must issue ENDTRANSFER command whenever
+dep->resource_index is valid.
+
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit 0e146028eebf989e86d3fe9385b76434e954c84e)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: Ic9c2805203220306a18c612e4347396de1b4aa3c
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34814
+Reviewed-on: https://android.intel.com:443/519811
+---
+ drivers/usb/dwc3/gadget.c | 20 +++++---------------
+ 1 file changed, 5 insertions(+), 15 deletions(-)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index e47cf6f..48cd960 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -681,24 +681,14 @@ static void dwc3_stop_active_transfer(struct dwc3 *dwc, u32 epnum, bool force);
+ static void dwc3_remove_requests(struct dwc3 *dwc, struct dwc3_ep *dep)
+ {
+ 	struct dwc3_request		*req;
+-	struct dwc3_trb			*current_trb;
+-	unsigned			transfer_in_flight;
+ 
+-	if (dep->number > 1)
+-		current_trb = &dep->trb_pool[dep->trb_enqueue];
+-	else
+-		current_trb = &dwc->ep0_trb[dep->trb_enqueue];
+-	transfer_in_flight = current_trb->ctrl & DWC3_TRB_CTRL_HWO;
+-
+-	if (transfer_in_flight && !list_empty(&dep->started_list)) {
+-		dwc3_stop_active_transfer(dwc, dep->number, true);
++	dwc3_stop_active_transfer(dwc, dep->number, true);
+ 
+-		/* - giveback all requests to gadget driver */
+-		while (!list_empty(&dep->started_list)) {
+-			req = next_request(&dep->started_list);
++	/* - giveback all requests to gadget driver */
++	while (!list_empty(&dep->started_list)) {
++		req = next_request(&dep->started_list);
+ 
+-			dwc3_gadget_giveback(dep, req, -ESHUTDOWN);
+-		}
++		dwc3_gadget_giveback(dep, req, -ESHUTDOWN);
+ 	}
+ 
+ 	while (!list_empty(&dep->pending_list)) {
+-- 
+1.9.1
+

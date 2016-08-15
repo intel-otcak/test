@@ -1,0 +1,103 @@
+From 2784e62512a5a9dd8a4eea065e80c843f0dff4aa Mon Sep 17 00:00:00 2001
+From: "Liu,Dalei" <daleix.liu@intel.com>
+Date: Tue, 22 Mar 2016 11:32:13 +0800
+Subject: [PATCH 5/5] ov8858: replace the setting 1640x1232 with 1632x1232
+
+When user want 960x720, system will select 5M (2704x2031)
+but not 1640x1232. It will lead a FOV issue because of 5M
+resolution(This setting crop some FOV). So we modify a new
+resolution 1632x1232 to replace 1640x1232. This setting was
+binning from full FOV and system will select this resoltuion
+if user need 960x720.
+
+Change-Id: I76786f27de17a7026eb52e1fba6e98abaf0cfa4a
+Original-Tracked_On: #H1504155018
+Signed-off-by: Liu,Dalei <daleix.liu@intel.com>
+Reviewed-on: https://icggerrit.ir.intel.com/109265
+Reviewed-by: GuoqingX Zhang <guoqingx.zhang@intel.com>
+Reviewed-by: HaiqiangX Yao <haiqiangx.yao@intel.com>
+Approver: Bin B Han <bin.b.han@intel.com>
+Reviewed-by: Bin B Han <bin.b.han@intel.com>
+Validation-Android: Wei Tao <wei.tao@intel.com>
+Build: Dessert M BXT RVP (SC)
+Integrator: WeiX Meng <weix.meng@intel.com>
+Reviewed-by: WeiX Meng <weix.meng@intel.com>
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-25608
+Signed-off-by: Tao Wei <wei.tao@intel.com>
+Reviewed-on: https://android.intel.com:443/485934
+---
+ .../camera/drivers/media/i2c/ov8858_btns.h         | 24 +++++++++++-----------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
+
+diff --git a/drivers/external_drivers/camera/drivers/media/i2c/ov8858_btns.h b/drivers/external_drivers/camera/drivers/media/i2c/ov8858_btns.h
+index ab9cc66..81297d8 100644
+--- a/drivers/external_drivers/camera/drivers/media/i2c/ov8858_btns.h
++++ b/drivers/external_drivers/camera/drivers/media/i2c/ov8858_btns.h
+@@ -1008,7 +1008,7 @@ static const struct ov8858_reg ov8858_1080P[] = {
+ 	{OV8858_TOK_TERM, 0, 0}
+ };
+ 
+-static const struct ov8858_reg ov8858_1640x1232[] = {
++static const struct ov8858_reg ov8858_1632x1232[] = {
+ 	{OV8858_8BIT, 0x0100, 0x00}, /* software_standby */
+ 	{OV8858_8BIT, 0x3841, 0x00},
+ 	{OV8858_8BIT, 0x3800, 0x00}, /* h_crop_start high */
+@@ -1019,8 +1019,8 @@ static const struct ov8858_reg ov8858_1640x1232[] = {
+ 	{OV8858_8BIT, 0x3805, 0xDF}, /* h_crop_end low */
+ 	{OV8858_8BIT, 0x3806, 0x09}, /* v_crop_end high */
+ 	{OV8858_8BIT, 0x3807, 0xAF}, /* v_crop_end low */
+-	{OV8858_8BIT, 0x3808, 0x06}, /* h_output_size high 1640 x 1232 */
+-	{OV8858_8BIT, 0x3809, 0x68}, /* h_output_size low */
++	{OV8858_8BIT, 0x3808, 0x06}, /* h_output_size high 1632 x 1232 */
++	{OV8858_8BIT, 0x3809, 0x60}, /* h_output_size low */
+ 	{OV8858_8BIT, 0x380A, 0x04}, /* v_output_size high */
+ 	{OV8858_8BIT, 0x380B, 0xD0}, /* v_output_size low */
+ 	{OV8858_8BIT, 0x380C, 0x0E}, /* horizontal timing size high */
+@@ -1181,11 +1181,11 @@ static struct ov8858_resolution ov8858_res_preview[] = {
+ 		},
+ 	},
+ 	{
+-		.desc = "ov8858_1640x1232_PREVIEW",
+-		.width = 1640,
++		.desc = "ov8858_1632x1232_PREVIEW",
++		.width = 1632,
+ 		.height = 1232,
+ 		.used = 0,
+-		.regs = ov8858_1640x1232,
++		.regs = ov8858_1632x1232,
+ 		.bin_factor_x = 0,
+ 		.bin_factor_y = 0,
+ 		.skip_frames = 0,
+@@ -1279,11 +1279,11 @@ static struct ov8858_resolution ov8858_res_preview[] = {
+ 
+ static struct ov8858_resolution ov8858_res_still[] = {
+ 	{
+-		.desc = "ov8858_1640x1232_STILL",
+-		.width = 1640,
++		.desc = "ov8858_1632x1232_STILL",
++		.width = 1632,
+ 		.height = 1232,
+ 		.used = 0,
+-		.regs = ov8858_1640x1232,
++		.regs = ov8858_1632x1232,
+ 		.bin_factor_x = 0,
+ 		.bin_factor_y = 0,
+ 		.skip_frames = 0,
+@@ -1397,11 +1397,11 @@ static struct ov8858_resolution ov8858_res_video[] = {
+ 		},
+ 	},
+ 	{
+-		.desc = "ov8858_1640x1232_VIDEO",
+-		.width = 1640,
++		.desc = "ov8858_1632x1232_VIDEO",
++		.width = 1632,
+ 		.height = 1232,
+ 		.used = 0,
+-		.regs = ov8858_1640x1232,
++		.regs = ov8858_1632x1232,
+ 		.bin_factor_x = 0,
+ 		.bin_factor_y = 0,
+ 		.skip_frames = 1,
+-- 
+1.9.1
+

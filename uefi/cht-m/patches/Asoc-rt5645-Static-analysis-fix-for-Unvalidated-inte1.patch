@@ -1,0 +1,36 @@
+From bdf84808cc9524e301c105b70d6c2d6a2ef2d03a Mon Sep 17 00:00:00 2001
+From: Deepa G K <g.k.deepa@intel.com>
+Date: Mon, 29 Feb 2016 15:53:50 +0530
+Subject: [PATCH 6/7] Asoc: rt5645: Static analysis fix for Unvalidated integer
+ value
+
+The static analysis tool reported an issue where an Unvalidated integer
+value '*buf' is received from 'memdup_user' and can be used to access
+array within the same function rt5645_ioctl_common().
+
+Change-Id: I66148d2dee31ad494f586dc26920f390193424ca
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-26152
+Signed-off-by: Deepa G K <g.k.deepa@intel.com>
+Signed-off-by: Kishore Kadiyala <kishore.kadiyala@intel.com>
+Reviewed-on: https://android.intel.com:443/475711
+Reviewed-on: https://android.intel.com:443/481558
+---
+ sound/soc/codecs/rt5645_ioctl.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/sound/soc/codecs/rt5645_ioctl.c b/sound/soc/codecs/rt5645_ioctl.c
+index d71c26c..7bc8259 100644
+--- a/sound/soc/codecs/rt5645_ioctl.c
++++ b/sound/soc/codecs/rt5645_ioctl.c
+@@ -132,6 +132,8 @@ int rt5645_ioctl_common(struct snd_hwdep *hw, struct file *file,
+ 	case RT_SET_CODEC_HWEQ_IOCTL:
+ 		if (eq_mode[0] == *buf)
+ 			break;
++		if (*buf < 0 || *buf >= EQ_CH_NUM)
++			goto err;
+ 		eq_mode[*buf] = *(buf + 1);
+ 		rt5645_update_eqmode(codec, eq_mode[*buf], *buf);
+ 		break;
+-- 
+1.9.1
+

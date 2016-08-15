@@ -1,0 +1,36 @@
+From 4785c19e1ad12438b9502bc2a2c294d1f4ac4bec Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <felipe.balbi@linux.intel.com>
+Date: Thu, 9 Jun 2016 16:24:08 +0300
+Subject: [PATCH 38/41] usb: dwc3: gadget: remove udelay() from run_stop()
+
+testing shows that udelay() is unnecessary as
+controller reaches Halted state almost
+instantenously as can be seen by our timeout
+variable never actually decrementing.
+
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit d807bdd02845d53047346a4ba6d8934597fba6d6)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: Icf22af31b317a1fbd3ff03446b7cb562b8a7a6e8
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34814
+Reviewed-on: https://android.intel.com:443/519808
+---
+ drivers/usb/dwc3/gadget.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index 55fa60d..007e408 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -1762,7 +1762,6 @@ static int dwc3_gadget_run_stop(struct dwc3 *dwc, int is_on)
+ 		timeout--;
+ 		if (!timeout)
+ 			return -ETIMEDOUT;
+-		udelay(1);
+ 	} while (1);
+ 
+ 	dwc3_trace(trace_dwc3_gadget, "gadget %s data soft-%s",
+-- 
+1.9.1
+

@@ -1,0 +1,46 @@
+From 1f316bc19918b2fce156d5c27e4417736cc7adc7 Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <felipe.balbi@linux.intel.com>
+Date: Tue, 5 Apr 2016 11:33:30 +0300
+Subject: [PATCH 61/78] usb: dwc3: core: document struct dwc3_request
+
+No functional changes. Merely adding useful
+documentation for future readers.
+
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit 5ef68c56e169a9249b94645a9ea9ca8d14672d26)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I1d581cd631a86703b6cc916a960fb4cf8df920e8
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-19337
+Reviewed-on: https://android.intel.com:443/511186
+---
+ drivers/usb/dwc3/core.h | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/drivers/usb/dwc3/core.h b/drivers/usb/dwc3/core.h
+index c08bc54..d5d3612 100644
+--- a/drivers/usb/dwc3/core.h
++++ b/drivers/usb/dwc3/core.h
+@@ -576,6 +576,19 @@ struct dwc3_hwparams {
+ /* HWPARAMS7 */
+ #define DWC3_RAM1_DEPTH(n)	((n) & 0xffff)
+ 
++/**
++ * struct dwc3_request - representation of a transfer request
++ * @request: struct usb_request to be transferred
++ * @list: a list_head used for request queueing
++ * @dep: struct dwc3_ep owning this request
++ * @first_trb_index: index to first trb used by this request
++ * @epnum: endpoint number to which this request refers
++ * @trb: pointer to struct dwc3_trb
++ * @trb_dma: DMA address of @trb
++ * @direction: IN or OUT direction flag
++ * @mapped: true when request has been dma-mapped
++ * @queued: true when request has been queued to HW
++ */
+ struct dwc3_request {
+ 	struct usb_request	request;
+ 	struct list_head	list;
+-- 
+1.9.1
+

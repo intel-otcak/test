@@ -1,0 +1,37 @@
+From 7232c5f3a9b19fab21f4c7777d074a9bdce54261 Mon Sep 17 00:00:00 2001
+From: Krzysztof Adamski <krzysztofx.adamski@intel.com>
+Date: Wed, 6 Jul 2016 11:41:46 +0200
+Subject: [PATCH 3/3] usb: gadget: fix double free in composite_dev_cleanup
+
+Since cdev structure is reused between composite_bind() calls, its
+fields should be carefully reset to proper state. It is not the case for
+os_desc_req field which is freed in composite_dev_cleanup(). In case of
+an error condition inside of composite_bind or configfs_composite_bind,
+composite_dev_cleanup() will be called at function exit before
+composite_os_desc_req_prepare() was called, leaving cdev->os_desc_req
+the same value it had before, causing double free error.
+
+Change-Id: I74d7cccf8992afd3593d26ebd667f2c59a8c2575
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34751
+Signed-off-by: Krzysztof Adamski <krzysztofx.adamski@intel.com>
+Reviewed-on: https://android.intel.com:443/521529
+---
+ drivers/usb/gadget/composite.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/usb/gadget/composite.c b/drivers/usb/gadget/composite.c
+index bf8c4ad..628a8a1 100644
+--- a/drivers/usb/gadget/composite.c
++++ b/drivers/usb/gadget/composite.c
+@@ -1929,6 +1929,8 @@ int composite_dev_prepare(struct usb_composite_driver *composite,
+ 	struct usb_gadget *gadget = cdev->gadget;
+ 	int ret = -ENOMEM;
+ 
++	cdev->os_desc_req = NULL;
++
+ 	/* preallocate control response and buffer */
+ 	cdev->req = usb_ep_alloc_request(gadget->ep0, GFP_KERNEL);
+ 	if (!cdev->req)
+-- 
+1.9.1
+

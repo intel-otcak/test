@@ -1,0 +1,45 @@
+From d910d4e0f39328e4ee4d385cc034b8bcbd74fb2a Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <balbi@ti.com>
+Date: Tue, 27 Jan 2015 13:47:02 -0600
+Subject: [PATCH 08/78] usb: dwc3: trace: add trace logs for core and gadget
+
+Sometimes we want to just print a formatted
+string without passing any extra data. The
+following will be used for removing reliance
+on dev_vdbg() from dwc3.
+
+Signed-off-by: Felipe Balbi <balbi@ti.com>
+(cherry picked from commit 6bac4ff0a52262faea4649dc8142962767f88b82)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: Id6eafa96eb188ea6664029212bfb84164c03ab76
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-29845
+Reviewed-on: https://android.intel.com:443/508184
+---
+ drivers/usb/dwc3/trace.h | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/drivers/usb/dwc3/trace.h b/drivers/usb/dwc3/trace.h
+index 9fc20b3..9c10669 100644
+--- a/drivers/usb/dwc3/trace.h
++++ b/drivers/usb/dwc3/trace.h
+@@ -47,6 +47,16 @@ DEFINE_EVENT(dwc3_log_msg, dwc3_writel,
+ 	TP_ARGS(vaf)
+ );
+ 
++DEFINE_EVENT(dwc3_log_msg, dwc3_gadget,
++	TP_PROTO(struct va_format *vaf),
++	TP_ARGS(vaf)
++);
++
++DEFINE_EVENT(dwc3_log_msg, dwc3_core,
++	TP_PROTO(struct va_format *vaf),
++	TP_ARGS(vaf)
++);
++
+ DEFINE_EVENT(dwc3_log_msg, dwc3_ep0,
+ 	TP_PROTO(struct va_format *vaf),
+ 	TP_ARGS(vaf)
+-- 
+1.9.1
+

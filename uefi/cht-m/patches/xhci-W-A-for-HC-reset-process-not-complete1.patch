@@ -1,0 +1,38 @@
+From 57e6f600bc8dc4cd8b1d5dc82c1fb33f062ac77c Mon Sep 17 00:00:00 2001
+From: Konrad Leszczynski <konrad.leszczynski@intel.com>
+Date: Mon, 4 Apr 2016 15:10:19 +0100
+Subject: [PATCH 36/41] xhci: W/A for HC reset process not complete.
+
+During warm reboot cycles, in some rare cases, xHCI reset
+process does not complete because HCRST bit was stuck.
+
+Bit EN_PIPE_4_1_SYNC_PHY_STATUS in DUAL_ROLE_CFG0 register
+will be set before performing the xHCI controller's
+reset (HC Reset) to W/A the problem with HC Reset completion.
+
+Change-Id: I2ed63dbed5352a409baa8dbf78d05f4c20ae46e8
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-31683
+Signed-off-by: Konrad Leszczynski <konrad.leszczynski@intel.com>
+Signed-off-by: Miroslaw Swiader <miroslaw.swiader@intel.com>
+Reviewed-on: https://android.intel.com:443/490556
+Reviewed-on: https://android.intel.com:443/504783
+---
+ drivers/usb/host/xhci-intel-cap.h | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/usb/host/xhci-intel-cap.h b/drivers/usb/host/xhci-intel-cap.h
+index 4fb3dd9..44e36cb 100644
+--- a/drivers/usb/host/xhci-intel-cap.h
++++ b/drivers/usb/host/xhci-intel-cap.h
+@@ -81,4 +81,6 @@ extern int xhci_intel_need_disable_stall(struct xhci_hcd *xhci);
+ extern void hub_intel_ssic_check_block_runtime(struct usb_device *udev);
+ extern void hub_intel_ssic_check_unblock_runtime(struct usb_device *udev);
+ extern void xhci_intel_pipe_sync_phystatus_quirk(struct xhci_hcd *xhci,
+-						 bool enable);
+\ No newline at end of file
++						 bool enable);
++extern void xhci_intel_pipe_sync_phystatus_quirk(struct xhci_hcd *xhci,
++						 bool enable);
+-- 
+1.9.1
+

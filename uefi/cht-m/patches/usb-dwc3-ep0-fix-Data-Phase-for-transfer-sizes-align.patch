@@ -1,0 +1,73 @@
+From 250169d5045978820f8d462146b46d17fb4a066d Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <balbi@ti.com>
+Date: Tue, 30 Sep 2014 10:39:14 -0500
+Subject: [PATCH 21/78] usb: dwc3: ep0: fix Data Phase for transfer sizes
+ aligned to wMaxPacketSize
+
+According to Section 8.5.3.2 of the USB 2.0 specification,
+a USB device must terminate a Data Phase with either a
+short packet or a ZLP (if the previous transfer was
+a multiple of wMaxPacketSize).
+
+For reference, here's what the USB 2.0 specification, section
+8.5.3.2 says:
+
+"
+8.5.3.2 Variable-length Data Stage
+
+A control pipe may have a variable-length data phase
+in which the host requests more data than is contained
+in the specified data structure. When all of the data
+structure is returned to the host, the function should
+indicate that the Data stage is ended by returning a
+packet that is shorter than the MaxPacketSize for the
+pipe. If the data structure is an exact multiple of
+wMaxPacketSize for the pipe, the function will return
+a zero-length packet to indicate the end of the Data
+stage.
+"
+
+Signed-off-by: Felipe Balbi <balbi@ti.com>
+(cherry picked from commit 36f84ffb45c75ff10442a9f8f2fd91dcf6c6f5dd)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I4f7dd3b2430e9b7c0376c030382430fb0b83271a
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-19337
+Reviewed-on: https://android.intel.com:443/511146
+---
+ drivers/usb/dwc3/ep0.c | 19 +++++++++++++------
+ 1 file changed, 13 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/usb/dwc3/ep0.c b/drivers/usb/dwc3/ep0.c
+index fe6acd7..1d26379 100644
+--- a/drivers/usb/dwc3/ep0.c
++++ b/drivers/usb/dwc3/ep0.c
+@@ -842,12 +842,19 @@ static void dwc3_ep0_complete_data(struct dwc3 *dwc,
+ 
+ 		dwc3_ep0_stall_and_restart(dwc);
+ 	} else {
+-		/*
+-		 * handle the case where we have to send a zero packet. This
+-		 * seems to be case when req.length > maxpacket. Could it be?
+-		 */
+-		if (r)
+-			dwc3_gadget_giveback(ep0, r, 0);
++		dwc3_gadget_giveback(ep0, r, 0);
++
++		if (IS_ALIGNED(ur->length, ep0->endpoint.maxpacket) &&
++				ur->length && ur->zero) {
++			int ret;
++
++			dwc->ep0_next_event = DWC3_EP0_COMPLETE;
++
++			ret = dwc3_ep0_start_trans(dwc, epnum,
++					dwc->ctrl_req_addr, 0,
++					DWC3_TRBCTL_CONTROL_DATA);
++			WARN_ON(ret < 0);
++		}
+ 	}
+ }
+ 
+-- 
+1.9.1
+

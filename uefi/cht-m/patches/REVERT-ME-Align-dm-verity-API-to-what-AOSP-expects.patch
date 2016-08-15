@@ -1,0 +1,56 @@
+From c83a63427b2d5f1dea80993c284208a835f97f5e Mon Sep 17 00:00:00 2001
+From: Sylvain Chouleur <sylvain.chouleur@intel.com>
+Date: Thu, 24 Sep 2015 17:04:54 +0200
+Subject: [PATCH] [REVERT ME] Align dm-verity API to what AOSP expects
+
+The init process expect to give verity mode to the driver by adding the
+mode number to the list of arguments.
+The current dm-verity driver expects a grouped formatted list of
+arguments using strings instead of number.
+
+This patch align the dm-verity driver to what the AOSP code expects.
+This is a temporary fix waiting for a viable solution from Google.
+
+Change-Id: I0dda49db1d8caf3783f9695d8ad17b867b02ef62
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-3853
+Signed-off-by: Sylvain Chouleur <sylvain.chouleur@intel.com>
+---
+ drivers/md/dm-verity-target.c |   19 ++++++++-----------
+ 1 file changed, 8 insertions(+), 11 deletions(-)
+
+--- a/drivers/md/dm-verity-target.c
++++ b/drivers/md/dm-verity-target.c
+@@ -837,7 +837,6 @@ static int verity_parse_opt_args(struct
+ int verity_ctr(struct dm_target *ti, unsigned argc, char **argv)
+ {
+ 	struct dm_verity *v;
+-	struct dm_arg_set as;
+ 	unsigned int num;
+ 	unsigned long long num_ll;
+ 	int r;
+@@ -985,17 +984,15 @@ int verity_ctr(struct dm_target *ti, uns
+ 		}
+ 	}
+ 
+-	argv += 10;
+-	argc -= 10;
+-
+-	/* Optional parameters */
+-	if (argc) {
+-		as.argc = argc;
+-		as.argv = argv;
+-
+-		r = verity_parse_opt_args(&as, v);
+-		if (r < 0)
++	if (argc > 10) {
++		if (sscanf(argv[10], "%d%c", &num, &dummy) != 1 ||
++		    num < DM_VERITY_MODE_EIO ||
++		    num > DM_VERITY_MODE_RESTART) {
++			ti->error = "Invalid mode";
++			r = -EINVAL;
+ 			goto bad;
++ 		}
++		v->mode = num;
+ 	}
+ 
+ 	v->hash_per_block_bits =

@@ -1,0 +1,91 @@
+From 699add4b578c0f86641916ac458c6bff7f946cf7 Mon Sep 17 00:00:00 2001
+From: Sami Tolvanen <samitolvanen@google.com>
+Date: Fri, 3 Jun 2016 14:06:14 -0700
+Subject: [PATCH 769/769] ANDROID: dm verity fec: limit error correction
+ recursion
+
+If verity tree itself is sufficiently corrupted in addition to data
+blocks, it's possible for error correction to end up in a deep recursive
+error correction loop that eventually causes a kernel panic as follows:
+
+[   14.728962] [<ffffffc0008c1a14>] verity_fec_decode+0xa8/0x138
+[   14.734691] [<ffffffc0008c3ee0>] verity_verify_level+0x11c/0x180
+[   14.740681] [<ffffffc0008c482c>] verity_hash_for_block+0x88/0xe0
+[   14.746671] [<ffffffc0008c1508>] fec_decode_rsb+0x318/0x75c
+[   14.752226] [<ffffffc0008c1a14>] verity_fec_decode+0xa8/0x138
+[   14.757956] [<ffffffc0008c3ee0>] verity_verify_level+0x11c/0x180
+[   14.763944] [<ffffffc0008c482c>] verity_hash_for_block+0x88/0xe0
+
+This change limits the recursion to a reasonable level during a single
+I/O operation.
+
+Bug: 28943429
+Signed-off-by: Sami Tolvanen <samitolvanen@google.com>
+Change-Id: I0a7ebff331d259c59a5e03c81918cc1613c3a766
+(cherry picked from commit f4b9e40597e73942d2286a73463c55f26f61bfa7)
+---
+ drivers/md/dm-verity-fec.c | 11 ++++++++++-
+ drivers/md/dm-verity-fec.h |  4 ++++
+ 2 files changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/md/dm-verity-fec.c b/drivers/md/dm-verity-fec.c
+index c03fc78..d35b0b1 100644
+--- a/drivers/md/dm-verity-fec.c
++++ b/drivers/md/dm-verity-fec.c
+@@ -442,6 +442,13 @@ int verity_fec_decode(struct dm_verity *v, struct dm_verity_io *io,
+ 	if (!verity_fec_is_enabled(v))
+ 		return -EOPNOTSUPP;
+ 
++	if (fio->level >= DM_VERITY_FEC_MAX_RECURSION) {
++		DMWARN_LIMIT("%s: FEC: recursion too deep", v->data_dev->name);
++		return -EIO;
++	}
++
++	fio->level++;
++
+ 	if (type == DM_VERITY_BLOCK_TYPE_METADATA)
+ 		block += v->data_blocks;
+ 
+@@ -475,7 +482,7 @@ int verity_fec_decode(struct dm_verity *v, struct dm_verity_io *io,
+ 	if (r < 0) {
+ 		r = fec_decode_rsb(v, io, fio, rsb, offset, true);
+ 		if (r < 0)
+-			return r;
++			goto done;
+ 	}
+ 
+ 	if (dest)
+@@ -485,6 +492,8 @@ int verity_fec_decode(struct dm_verity *v, struct dm_verity_io *io,
+ 		r = verity_for_bv_block(v, io, iter, fec_bv_copy);
+ 	}
+ 
++done:
++	fio->level--;
+ 	return r;
+ }
+ 
+diff --git a/drivers/md/dm-verity-fec.h b/drivers/md/dm-verity-fec.h
+index 67b29ec..4f6cb16 100644
+--- a/drivers/md/dm-verity-fec.h
++++ b/drivers/md/dm-verity-fec.h
+@@ -28,6 +28,9 @@
+ #define DM_VERITY_FEC_BUF_MAX \
+ 	(1 << (PAGE_SHIFT - DM_VERITY_FEC_BUF_RS_BITS))
+ 
++/* maximum recursion level for verity_fec_decode */
++#define DM_VERITY_FEC_MAX_RECURSION	4
++
+ #define DM_VERITY_OPT_FEC_DEV		"use_fec_from_device"
+ #define DM_VERITY_OPT_FEC_BLOCKS	"fec_blocks"
+ #define DM_VERITY_OPT_FEC_START		"fec_start"
+@@ -61,6 +64,7 @@ struct dm_verity_fec_io {
+ 	unsigned nbufs;		/* number of buffers allocated */
+ 	u8 *output;		/* buffer for corrected output */
+ 	size_t output_pos;
++	unsigned level;		/* recursion level */
+ };
+ 
+ #ifdef CONFIG_DM_VERITY_FEC
+-- 
+1.9.1
+

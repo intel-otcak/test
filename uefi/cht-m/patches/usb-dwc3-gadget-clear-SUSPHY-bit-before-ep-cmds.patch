@@ -1,0 +1,70 @@
+From 67b4dda18d2697f18012ddd36df3667561744b3d Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <felipe.balbi@linux.intel.com>
+Date: Mon, 4 Apr 2016 09:19:17 +0300
+Subject: [PATCH 58/78] usb: dwc3: gadget: clear SUSPHY bit before ep cmds
+
+Synopsys Databook 2.60a has a note that if we're
+sending an endpoint command we _must_ make sure that
+DWC3_GUSB2PHY(n).SUSPHY bit is cleared.
+
+This patch implements that particular detail.
+
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit 2b0f11df84bb66c9ac71395382c018f33c3ff9a4)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: Ic7a0597d7b871074f34c1e2e81ce3c4dd66148df
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-19337
+Reviewed-on: https://android.intel.com:443/511183
+---
+ drivers/usb/dwc3/gadget.c | 23 +++++++++++++++++++++++
+ 1 file changed, 23 insertions(+)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index cb355eb..98506c0 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -299,10 +299,27 @@ int dwc3_send_gadget_ep_cmd(struct dwc3 *dwc, unsigned ep,
+ 	struct dwc3_ep		*dep = dwc->eps[ep];
+ 	u32			timeout = 500;
+ 	u32			reg;
++
++	int			susphy = false;
+ 	int			ret = -EINVAL;
+ 
+ 	trace_dwc3_gadget_ep_cmd(dep, cmd, params);
+ 
++	/*
++	 * Synopsys Databook 2.60a states, on section 6.3.2.5.[1-8], that if
++	 * we're issuing an endpoint command, we must check if
++	 * GUSB2PHYCFG.SUSPHY bit is set. If it is, then we need to clear it.
++	 *
++	 * We will also set SUSPHY bit to what it was before returning as stated
++	 * by the same section on Synopsys databook.
++	 */
++	reg = dwc3_readl(dwc->regs, DWC3_GUSB2PHYCFG(0));
++	if (unlikely(reg & DWC3_GUSB2PHYCFG_SUSPHY)) {
++		susphy = true;
++		reg &= ~DWC3_GUSB2PHYCFG_SUSPHY;
++		dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(0), reg);
++	}
++
+ 	dwc3_writel(dwc->regs, DWC3_DEPCMDPAR0(ep), params->param0);
+ 	dwc3_writel(dwc->regs, DWC3_DEPCMDPAR1(ep), params->param1);
+ 	dwc3_writel(dwc->regs, DWC3_DEPCMDPAR2(ep), params->param2);
+@@ -346,6 +363,12 @@ int dwc3_send_gadget_ep_cmd(struct dwc3 *dwc, unsigned ep,
+ 		udelay(1);
+ 	} while (1);
+ 
++	if (unlikely(susphy)) {
++		reg = dwc3_readl(dwc->regs, DWC3_GUSB2PHYCFG(0));
++		reg |= DWC3_GUSB2PHYCFG_SUSPHY;
++		dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(0), reg);
++	}
++
+ 	return ret;
+ }
+ 
+-- 
+1.9.1
+

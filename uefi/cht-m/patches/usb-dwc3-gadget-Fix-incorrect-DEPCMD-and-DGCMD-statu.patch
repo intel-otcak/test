@@ -1,0 +1,52 @@
+From f68a14bb5ca43be60f152a0a7c65cb7d936235ef Mon Sep 17 00:00:00 2001
+From: Subbaraya Sundeep Bhatta <subbaraya.sundeep.bhatta@xilinx.com>
+Date: Thu, 21 May 2015 15:46:46 +0530
+Subject: [PATCH 24/78] usb: dwc3: gadget: Fix incorrect DEPCMD and DGCMD
+ status macros
+
+Fixed the incorrect macro definitions correctly as per databook.
+
+Signed-off-by: Subbaraya Sundeep Bhatta <sbhatta@xilinx.com>
+Fixes: b09bb64239c8 (usb: dwc3: gadget: implement Global Command support)
+Cc: <stable@vger.kernel.org> #v3.5+
+Signed-off-by: Felipe Balbi <balbi@ti.com>
+(cherry picked from commit 459e210c4fd034d20077bcec31fec9472a700fe9)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Conflicts:
+	drivers/usb/dwc3/core.h
+
+Change-Id: I581ad5229cef30b31061e24db434f0645e19b0e4
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-19337
+Reviewed-on: https://android.intel.com:443/511149
+---
+ drivers/usb/dwc3/core.h | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/usb/dwc3/core.h b/drivers/usb/dwc3/core.h
+index 902a1c9..0d3ef04 100644
+--- a/drivers/usb/dwc3/core.h
++++ b/drivers/usb/dwc3/core.h
+@@ -314,7 +314,7 @@
+ #define DWC3_DGCMD_SET_ENDPOINT_NRDY	0x0c
+ #define DWC3_DGCMD_RUN_SOC_BUS_LOOPBACK	0x10
+ 
+-#define DWC3_DGCMD_STATUS(n)		(((n) >> 15) & 1)
++#define DWC3_DGCMD_STATUS(n)		(((n) >> 12) & 0x0F)
+ #define DWC3_DGCMD_CMDACT		(1 << 10)
+ #define DWC3_DGCMD_CMDIOC		(1 << 8)
+ 
+@@ -329,8 +329,8 @@
+ /* Device Endpoint Command Register */
+ #define DWC3_DEPCMD_PARAM_SHIFT		16
+ #define DWC3_DEPCMD_PARAM(x)		((x) << DWC3_DEPCMD_PARAM_SHIFT)
+-#define DWC3_DEPCMD_GET_RSC_IDX(x)     (((x) >> DWC3_DEPCMD_PARAM_SHIFT) & 0x7f)
+-#define DWC3_DEPCMD_STATUS(x)		(((x) >> 15) & 1)
++#define DWC3_DEPCMD_GET_RSC_IDX(x)	(((x) >> DWC3_DEPCMD_PARAM_SHIFT) & 0x7f)
++#define DWC3_DEPCMD_STATUS(x)		(((x) >> 12) & 0x0F)
+ #define DWC3_DEPCMD_HIPRI_FORCERM	(1 << 11)
+ #define DWC3_DEPCMD_CMDACT		(1 << 10)
+ #define DWC3_DEPCMD_CMDIOC		(1 << 8)
+-- 
+1.9.1
+

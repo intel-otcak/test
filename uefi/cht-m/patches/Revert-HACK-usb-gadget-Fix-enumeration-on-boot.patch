@@ -1,0 +1,42 @@
+From 9c65aeed7426907156190b2ae7a61c977d3fc5d9 Mon Sep 17 00:00:00 2001
+From: Krzysztof Adamski <krzysztofx.adamski@intel.com>
+Date: Tue, 24 May 2016 15:50:21 +0200
+Subject: [PATCH 08/11] Revert "HACK: usb: gadget: Fix enumeration on boot"
+
+This reverts commit 7ff4c6cc1fc8e55ca7a7154eb5048766a620fc72.
+
+This hack prevents configfs based USB gadget mode from working
+correctly.
+
+Change-Id: I8703d3d4f0390fbf37db49b49c64108d434bb182
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34018
+Signed-off-by: Krzysztof Adamski <krzysztofx.adamski@intel.com>
+Reviewed-on: https://android.intel.com:443/514021
+---
+ drivers/usb/gadget/udc-core.c | 10 +---------
+ 1 file changed, 1 insertion(+), 9 deletions(-)
+
+diff --git a/drivers/usb/gadget/udc-core.c b/drivers/usb/gadget/udc-core.c
+index b325e98..9ce0b13 100644
+--- a/drivers/usb/gadget/udc-core.c
++++ b/drivers/usb/gadget/udc-core.c
+@@ -351,15 +351,7 @@ static int udc_bind_to_driver(struct usb_udc *udc, struct usb_gadget_driver *dri
+ 		driver->unbind(udc->gadget);
+ 		goto err1;
+ 	}
+-	/*
+-	 * HACK: The Android gadget driver disconnects the gadget
+-	 * on bind and expects the gadget to stay disconnected until
+-	 * it calls usb_gadget_connect when userspace is ready. Remove
+-	 * the call to usb_gadget_connect bellow to avoid enabling the
+-	 * pullup before userspace is ready.
+-	 *
+-	 * usb_gadget_connect(udc->gadget);
+-	 */
++	usb_gadget_connect(udc->gadget);
+ 
+ 	kobject_uevent(&udc->dev.kobj, KOBJ_CHANGE);
+ 	return 0;
+-- 
+1.9.1
+

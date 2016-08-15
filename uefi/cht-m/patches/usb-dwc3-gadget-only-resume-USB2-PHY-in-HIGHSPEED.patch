@@ -1,0 +1,48 @@
+From 0ba7d01229208c94c751451a4d3744c37e34ea3b Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <felipe.balbi@linux.intel.com>
+Date: Tue, 17 May 2016 14:55:58 +0300
+Subject: [PATCH 10/41] usb: dwc3: gadget: only resume USB2 PHY in <=HIGHSPEED
+
+As a micro-power optimization, let's only resume the
+USB2 PHY if we're working on <=HIGHSPEED. If we're
+gonna work on SUPERSPEED or SUPERSPEED+, there's no
+point in resuming the USB2 PHY.
+
+Fixes: 2b0f11df84bb ("usb: dwc3: gadget: clear SUSPHY bit before ep cmds")
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit ab2a92e7a608c09f13baf1730b9ba24c73c35d52)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: Ic2d2cb70bcd24e37f2d7e96d0e4648e333cd348b
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34814
+Reviewed-on: https://android.intel.com:443/519780
+---
+ drivers/usb/dwc3/gadget.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index 3d1ed36..5ebbb4c 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -331,11 +331,13 @@ int dwc3_send_gadget_ep_cmd(struct dwc3_ep *dep, unsigned cmd,
+ 	 * We will also set SUSPHY bit to what it was before returning as stated
+ 	 * by the same section on Synopsys databook.
+ 	 */
+-	reg = dwc3_readl(dwc->regs, DWC3_GUSB2PHYCFG(0));
+-	if (unlikely(reg & DWC3_GUSB2PHYCFG_SUSPHY)) {
+-		susphy = true;
+-		reg &= ~DWC3_GUSB2PHYCFG_SUSPHY;
+-		dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(0), reg);
++	if (dwc->gadget.speed <= USB_SPEED_HIGH) {
++		reg = dwc3_readl(dwc->regs, DWC3_GUSB2PHYCFG(0));
++		if (unlikely(reg & DWC3_GUSB2PHYCFG_SUSPHY)) {
++			susphy = true;
++			reg &= ~DWC3_GUSB2PHYCFG_SUSPHY;
++			dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(0), reg);
++		}
+ 	}
+ 
+ 	if (cmd == DWC3_DEPCMD_STARTTRANSFER) {
+-- 
+1.9.1
+

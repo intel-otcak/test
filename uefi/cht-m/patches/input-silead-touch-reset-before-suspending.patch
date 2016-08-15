@@ -1,0 +1,31 @@
+From 865fe02c77745d3cd9f931ce888218fdc09575bd Mon Sep 17 00:00:00 2001
+From: Hu Bingquan <bingquan.hu@intel.com>
+Date: Wed, 20 Apr 2016 14:05:45 +0800
+Subject: [PATCH 01/41] input: silead touch: reset before suspending
+
+This is a WA from vendor to fix the i2c register writing failure.
+
+Change-Id: Ib5a102a11d0cf1b0922ceed05095070590074fc4
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-31772
+Signed-off-by: Hu Bingquan <bingquan.hu@intel.com>
+Reviewed-on: https://android.intel.com:443/496878
+Reviewed-on: https://android.intel.com:443/504312
+---
+ drivers/input/touchscreen/silead.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/input/touchscreen/silead.c b/drivers/input/touchscreen/silead.c
+index 7cc5c16..afe8929 100644
+--- a/drivers/input/touchscreen/silead.c
++++ b/drivers/input/touchscreen/silead.c
+@@ -177,6 +177,7 @@ static void silead_ts_set_power(struct i2c_client *client,
+ 					SILEAD_CLOCK);
+ 		}
+ 		else {
++			i2c_smbus_write_byte_data(client, SILEAD_REG_RESET,	SILEAD_CMD_RESET);
+ 			ret = i2c_smbus_write_byte_data(client, SILEAD_REG_CLOCK,
+ 					SILEAD_CLOCK_OFF);
+ 		}
+-- 
+1.9.1
+

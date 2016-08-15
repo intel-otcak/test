@@ -1,0 +1,58 @@
+From 62b69c01a69696a357a78a79bbdbf4d70928a0f5 Mon Sep 17 00:00:00 2001
+From: John Youn <johnyoun@synopsys.com>
+Date: Thu, 19 May 2016 17:26:12 -0700
+Subject: [PATCH 07/13] usb: dwc3: gadget: Account for max size in TRB space
+
+The current calculation takes dep->trb_dequeue - dep->trb_enqueue to
+find the TRB space left.
+
+If you enqueue 1, that results in:
+(u8) 0 - (u8) 1 = 0xff = 255 TRBs left.
+
+This is correct if DWC3_TRB_NUM == 256.
+
+If DWC3_TRB_NUM is less than 256 (but still a power of 2) you need to
+mod the result by DWC3_TRB_NUM.
+
+For example the same calculation with DWC3_TRB_NUM = 8, results in:
+255 % 6 = 7 TRBs left.
+
+Signed-off-by: John Youn <johnyoun@synopsys.com>
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit c541d4c306a4d5c4e14ca74c3f65f699b08174f4)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I71f0be757d85576cd97a788e30fbd8b44897512b
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34491
+Reviewed-on: https://android.intel.com:443/519131
+---
+ drivers/usb/dwc3/gadget.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index 8f80639..cdb3d56 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -879,6 +879,7 @@ static void dwc3_prepare_one_trb(struct dwc3_ep *dep,
+ static u32 dwc3_calc_trbs_left(struct dwc3_ep *dep)
+ {
+ 	struct dwc3_trb		*tmp;
++	u8			trbs_left;
+ 
+ 	/*
+ 	 * If enqueue & dequeue are equal than it is either full or empty.
+@@ -898,7 +899,10 @@ static u32 dwc3_calc_trbs_left(struct dwc3_ep *dep)
+ 		return DWC3_TRB_NUM - 1;
+ 	}
+ 
+-	return dep->trb_dequeue - dep->trb_enqueue;
++	trbs_left = dep->trb_dequeue - dep->trb_enqueue;
++	trbs_left %= DWC3_TRB_NUM;
++
++	return trbs_left;
+ }
+ 
+ /*
+-- 
+1.9.1
+

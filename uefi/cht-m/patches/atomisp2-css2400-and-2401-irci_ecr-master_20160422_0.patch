@@ -1,0 +1,109 @@
+From 18ee1bcd65c9ad75bec5198cac23ac6a1456a7a8 Mon Sep 17 00:00:00 2001
+From: sys_icgvert <icgvert@intel.com>
+Date: Fri, 22 Apr 2016 18:27:57 -0700
+Subject: [PATCH 5/5] atomisp2: css2400 and 2401 irci_ecr-master_20160422_0704
+
+Merge CSS2.1 for css2400 and 2401_legacy pkg
+
+Change-Id: Ib0b13b5eaadca560afc24b523943b2b9e6ca3fbb
+FW: tag irci_ecr-master_20160422_0704
+Original-Tracked_On: #H1404964354
+Signed-off-by: sys_icgvert <icgvert@intel.com>
+Reviewed-on: https://icggerrit.ir.intel.com/115877
+Build: Dessert M BTNS (SC)
+Build: Dessert M CHT FFD (SC)
+Build: Dessert M BXT RVP (SC)
+Validation-Android: Dessert M BXT RVP (SC)
+Approver: WeiX Meng <weix.meng@intel.com>
+Integrator: WeiX Meng <weix.meng@intel.com>
+Reviewed-by: WeiX Meng <weix.meng@intel.com>
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-30280
+Signed-off-by: Tao Wei <wei.tao@intel.com>
+Reviewed-on: https://android.intel.com:443/501019
+---
+ .../external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css.h   | 2 +-
+ .../camera/drivers/media/pci/atomisp2/css/ia_css_types.h              | 2 +-
+ .../camera/drivers/media/pci/atomisp2/css/ia_css_version_data.h       | 2 +-
+ .../drivers/media/pci/atomisp2/css/isp/modes/interface/isp_const.h    | 1 +
+ .../camera/drivers/media/pci/atomisp2/css/sh_css_defs.h               | 2 +-
+ .../camera/drivers/media/pci/atomisp2/css/sh_css_firmware.c           | 4 ++--
+ 6 files changed, 7 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css.h b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css.h
+index 7cf8804..231d478 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css.h
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css.h
+@@ -1,4 +1,4 @@
+-/* Release Version: irci_ecr-master_20160418_1500 */
++/* Release Version: irci_ecr-master_20160422_0704 */
+ /**
+ Support for Intel Camera Imaging ISP subsystem.
+ Copyright (c) 2010 - 2015, Intel Corporation.
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_types.h b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_types.h
+index 6fda5a6..5f425ba 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_types.h
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_types.h
+@@ -1,4 +1,4 @@
+-/* Release Version: irci_ecr-master_20160418_1500 */
++/* Release Version: irci_ecr-master_20160422_0704 */
+ /**
+ Support for Intel Camera Imaging ISP subsystem.
+ Copyright (c) 2010 - 2015, Intel Corporation.
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_version_data.h b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_version_data.h
+index c34359d..b0f5ecd 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_version_data.h
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/ia_css_version_data.h
+@@ -22,7 +22,7 @@ more details.
+ #define __IA_CSS_VERSION_DATA_H
+ 
+ 
+-#define CSS_VERSION_STRING "REL:20160418_16.1_1833; API:2.1.22.2; GIT:irci___#2b04e084673172c9673146c645d49bab447c8aca; SDK:; USER:viedifw; "
++#define CSS_VERSION_STRING "REL:20160422_16.5_1127; API:2.1.22.2; GIT:irci____4#2c756517f18b06a2b18b93d480cb4474f0f50db1; SDK:; USER:viedifw; "
+ 
+ 
+ #endif
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/modes/interface/isp_const.h b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/modes/interface/isp_const.h
+index 899a9fc..b42a91d 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/modes/interface/isp_const.h
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/isp/modes/interface/isp_const.h
+@@ -196,6 +196,7 @@ more details.
+ #define SH_CSS_BINARY_ID_VIDEO_YUVP1_TO_OSYS                240
+ #define SH_CSS_BINARY_ID_IF_TO_OSYS_PREVIEW                 241
+ #define SH_CSS_BINARY_ID_IF_TO_OSYS_PREVIEW_STRIPED         242
++#define SH_CSS_BINARY_ID_IF_TO_RGBIR_REMOSAIC               243
+ 
+ /* Skycam IR camera binaries */
+ #define SH_CSS_BINARY_ID_IR_IF_TO_OSYS                      300
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_defs.h b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_defs.h
+index 9f42fd4..ff15521 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_defs.h
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_defs.h
+@@ -116,7 +116,7 @@ RGB[0,8191],coef[-8192,8191] -> RGB[0,8191]
+ 
+ /* Bits of output of CCM,  = 12, RGB[0,4095] */
+ 
+-#ifdef GC2_PIPE_VERSION_2_6_1
++#ifdef GC2_PIPE_VERSION_2_7
+ /* According to spec CCM output is 13bit. GAMMA is expected to do 1bit right shift */
+ /* This is required to bit-exact with ate */
+ 
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_firmware.c b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_firmware.c
+index a27fb2c..383f168 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_firmware.c
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/css/sh_css_firmware.c
+@@ -47,10 +47,10 @@ struct fw_param {
+ /* Warning: same order as SH_CSS_BINARY_ID_* */
+ static struct firmware_header *firmware_header;
+ 
+-/* The string STR(irci_ecr-master_20160418_1500) is a place holder
++/* The string STR(irci_ecr-master_20160422_0704) is a place holder
+  * which will be replaced with the actual RELEASE_VERSION
+  * during package generation. Please do not modify  */
+-static const char *release_version = STR(irci_ecr-master_20160418_1500);
++static const char *release_version = STR(irci_ecr-master_20160422_0704);
+ 
+ #define MAX_FW_REL_VER_NAME	300
+ static char FW_rel_ver_name[MAX_FW_REL_VER_NAME] = "---";
+-- 
+1.9.1
+

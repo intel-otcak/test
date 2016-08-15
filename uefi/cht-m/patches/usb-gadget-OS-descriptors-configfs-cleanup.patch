@@ -1,0 +1,97 @@
+From d39a3cd58d0b52d9ae746bad5110971fa8dd72cf Mon Sep 17 00:00:00 2001
+From: Andrzej Pietrasiewicz <andrzej.p@samsung.com>
+Date: Wed, 18 Jun 2014 14:24:48 +0200
+Subject: [PATCH 12/14] usb: gadget: OS descriptors configfs cleanup
+
+A number of variables serve a generic purpose of handling
+"compatible id" and "subcompatible id", but the names suggest they
+are for rndis only. Rename to reflect variables' purpose.
+
+Signed-off-by: Andrzej Pietrasiewicz <andrzej.p@samsung.com>
+Signed-off-by: Felipe Balbi <balbi@ti.com>
+
+(cherry picked from commit fe00b138295650fc46670b68342029b9fc391c62)
+
+Change-Id: I4dc474715c58be9dbfdd68f50c24a2a44ccbee94
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-33009
+Signed-off-by: Krzysztof Adamski <krzysztofx.adamski@intel.com>
+Reviewed-on: https://android.intel.com:443/514018
+---
+ drivers/usb/gadget/configfs.c | 32 ++++++++++++++++----------------
+ 1 file changed, 16 insertions(+), 16 deletions(-)
+
+diff --git a/drivers/usb/gadget/configfs.c b/drivers/usb/gadget/configfs.c
+index 650773a..299407a 100644
+--- a/drivers/usb/gadget/configfs.c
++++ b/drivers/usb/gadget/configfs.c
+@@ -1181,15 +1181,15 @@ static struct configfs_item_operations interf_item_ops = {
+ 	.store_attribute	= usb_os_desc_attr_store,
+ };
+ 
+-static ssize_t rndis_grp_compatible_id_show(struct usb_os_desc *desc,
+-					    char *page)
++static ssize_t interf_grp_compatible_id_show(struct usb_os_desc *desc,
++					     char *page)
+ {
+ 	memcpy(page, desc->ext_compat_id, 8);
+ 	return 8;
+ }
+ 
+-static ssize_t rndis_grp_compatible_id_store(struct usb_os_desc *desc,
+-					     const char *page, size_t len)
++static ssize_t interf_grp_compatible_id_store(struct usb_os_desc *desc,
++					      const char *page, size_t len)
+ {
+ 	int l;
+ 
+@@ -1207,20 +1207,20 @@ static ssize_t rndis_grp_compatible_id_store(struct usb_os_desc *desc,
+ 	return len;
+ }
+ 
+-static struct usb_os_desc_attribute rndis_grp_attr_compatible_id =
++static struct usb_os_desc_attribute interf_grp_attr_compatible_id =
+ 	__CONFIGFS_ATTR(compatible_id, S_IRUGO | S_IWUSR,
+-			rndis_grp_compatible_id_show,
+-			rndis_grp_compatible_id_store);
++			interf_grp_compatible_id_show,
++			interf_grp_compatible_id_store);
+ 
+-static ssize_t rndis_grp_sub_compatible_id_show(struct usb_os_desc *desc,
+-						char *page)
++static ssize_t interf_grp_sub_compatible_id_show(struct usb_os_desc *desc,
++						 char *page)
+ {
+ 	memcpy(page, desc->ext_compat_id + 8, 8);
+ 	return 8;
+ }
+ 
+-static ssize_t rndis_grp_sub_compatible_id_store(struct usb_os_desc *desc,
+-						 const char *page, size_t len)
++static ssize_t interf_grp_sub_compatible_id_store(struct usb_os_desc *desc,
++						  const char *page, size_t len)
+ {
+ 	int l;
+ 
+@@ -1238,14 +1238,14 @@ static ssize_t rndis_grp_sub_compatible_id_store(struct usb_os_desc *desc,
+ 	return len;
+ }
+ 
+-static struct usb_os_desc_attribute rndis_grp_attr_sub_compatible_id =
++static struct usb_os_desc_attribute interf_grp_attr_sub_compatible_id =
+ 	__CONFIGFS_ATTR(sub_compatible_id, S_IRUGO | S_IWUSR,
+-			rndis_grp_sub_compatible_id_show,
+-			rndis_grp_sub_compatible_id_store);
++			interf_grp_sub_compatible_id_show,
++			interf_grp_sub_compatible_id_store);
+ 
+ static struct configfs_attribute *interf_grp_attrs[] = {
+-	&rndis_grp_attr_compatible_id.attr,
+-	&rndis_grp_attr_sub_compatible_id.attr,
++	&interf_grp_attr_compatible_id.attr,
++	&interf_grp_attr_sub_compatible_id.attr,
+ 	NULL
+ };
+ 
+-- 
+1.9.1
+

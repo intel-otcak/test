@@ -1,0 +1,39 @@
+From ccdb626f4bca9273e5b30c1fd1f68c1074f31fcf Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <balbi@ti.com>
+Date: Thu, 19 Dec 2013 16:37:05 -0600
+Subject: [PATCH 18/78] usb: dwc3: gadget: make sure HIRD threshold is 0 in
+ superspeed
+
+During superspeed, HIRD threshold should always
+be zero. Curent driver wasn't making sure that
+was the case.
+
+Signed-off-by: Felipe Balbi <balbi@ti.com>
+(cherry picked from commit 2340c8c1eef3ea374ff6b76a814fbb37f5cd4cce)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: Ib6433f656b5f0f09dbf313d199161f9b0a9b8cbd
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-19337
+Reviewed-on: https://android.intel.com:443/511143
+---
+ drivers/usb/dwc3/gadget.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index 8aa17df..b204f86 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -2506,6 +2506,10 @@ static void dwc3_gadget_conndone_interrupt(struct dwc3 *dwc)
+ 			reg &= ~DWC3_DCTL_L1_NYET_TRESH;
+ 
+ 		dwc3_writel(dwc->regs, DWC3_DCTL, reg);
++	} else {
++		reg = dwc3_readl(dwc->regs, DWC3_DCTL);
++		reg &= ~DWC3_DCTL_HIRD_THRES_MASK;
++		dwc3_writel(dwc->regs, DWC3_DCTL, reg);
+ 	}
+ 
+ 	dep = dwc->eps[0];
+-- 
+1.9.1
+

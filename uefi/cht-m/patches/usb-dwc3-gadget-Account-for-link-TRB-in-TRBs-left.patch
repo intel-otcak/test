@@ -1,0 +1,40 @@
+From ea5a09a71921646c7688430a0734100e7fa75abf Mon Sep 17 00:00:00 2001
+From: John Youn <johnyoun@synopsys.com>
+Date: Thu, 19 May 2016 17:26:15 -0700
+Subject: [PATCH 08/13] usb: dwc3: gadget: Account for link TRB in TRBs left
+
+The TRBs left calculation didn't account for the link TRB taking up one
+spot.
+
+If the trb_dequeue < trb_enqueue, then the result includes the link
+TRB slot so it must be adjusted.
+
+Signed-off-by: John Youn <johnyoun@synopsys.com>
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit 13d95fb6fc94fee0de797fad9ce354959eabadea)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I524658feb70610fdb9aba5be10236f7d748cf08b
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34491
+Reviewed-on: https://android.intel.com:443/519132
+---
+ drivers/usb/dwc3/gadget.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index cdb3d56..cacf150 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -902,6 +902,9 @@ static u32 dwc3_calc_trbs_left(struct dwc3_ep *dep)
+ 	trbs_left = dep->trb_dequeue - dep->trb_enqueue;
+ 	trbs_left %= DWC3_TRB_NUM;
+ 
++	if (dep->trb_dequeue < dep->trb_enqueue)
++		trbs_left--;
++
+ 	return trbs_left;
+ }
+ 
+-- 
+1.9.1
+

@@ -1,0 +1,209 @@
+From f04a8167801f39ee013194d8911df20145b701dd Mon Sep 17 00:00:00 2001
+From: Bin Han <bin.b.han@intel.com>
+Date: Wed, 21 May 2014 15:14:20 +0800
+Subject: [PATCH 3/7] atomisp2: enable DVS YUV downscaling for online video
+ pipe
+
+This patch enabled the YUV downscaling by DVS kernel of the
+online video pipe.
+
+Original-Tracked_On: #H1504164994
+Change-Id: I2eda853e36bb18bba0652e2d0860dbb4556eb51e
+Signed-off-by: Bin Han <bin.b.han@intel.com>
+Reviewed-on: https://icggerrit.ir.intel.com/99560
+Reviewed-by: Tian Shu Qiu <tian.shu.qiu@intel.com>
+Reviewed-by: HaiqiangX Yao <haiqiangx.yao@intel.com>
+Build: Dessert M BXT RVP (SC)
+Validation-Android: Wei Tao <wei.tao@intel.com>
+Approver: Tian Shu Qiu <tian.shu.qiu@intel.com>
+Reviewed-by: DaleiX Liu <daleix.liu@intel.com>
+Integrator: WeiX Meng <weix.meng@intel.com>
+Build: Dessert M CHT FFD (SC)
+Reviewed-by: WeiX Meng <weix.meng@intel.com>
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-21584
+Signed-off-by: Tao Wei <wei.tao@intel.com>
+Reviewed-on: https://android.intel.com:443/475695
+---
+ .../pci/atomisp2/atomisp_driver/atomisp_cmd.c      | 66 ++++++++++++++++++----
+ .../pci/atomisp2/atomisp_driver/atomisp_subdev.c   | 51 +++++++----------
+ 2 files changed, 76 insertions(+), 41 deletions(-)
+
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_cmd.c b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_cmd.c
+index 787afb6..36c72a2 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_cmd.c
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_cmd.c
+@@ -2587,18 +2587,20 @@ int atomisp_get_dvs2_bq_resolutions(struct atomisp_sub_device *asd,
+ 	if (!bq_res)
+ 		return -EINVAL;
+ 
+-	/* the GDC output resolution */
+-	bq_res->output_bq.width_bq = pipe_cfg->output_info[0].res.width / 2;
+-	bq_res->output_bq.height_bq = pipe_cfg->output_info[0].res.height / 2;
++	if (input_config->effective_res.width == 0 ||
++		input_config->effective_res.height == 0) {
++		dev_warn(asd->isp->dev, "%s: effective resolution is not valid, please do set format first\n",
++			__func__);
++		return -EINVAL;
++	}
+ 
+ 	bq_res->envelope_bq.width_bq = 0;
+ 	bq_res->envelope_bq.height_bq = 0;
+ 	/* the GDC input resolution */
+ 	if (!asd->continuous_mode->val) {
+-		bq_res->source_bq.width_bq = bq_res->output_bq.width_bq +
+-				pipe_cfg->dvs_envelope.width / 2;
+-		bq_res->source_bq.height_bq = bq_res->output_bq.height_bq +
+-				pipe_cfg->dvs_envelope.height / 2;
++		unsigned int pad_width, pad_height;
++		unsigned int cropped_w, cropped_h;
++
+ 		/*
+ 		 * Bad pixels caused by spatial filter processing
+ 		 * ISP filter resolution should be given by CSS/FW, but for now
+@@ -2607,20 +2609,62 @@ int atomisp_get_dvs2_bq_resolutions(struct atomisp_sub_device *asd,
+ 		 */
+ 		bq_res->ispfilter_bq.width_bq = 12 / 2;
+ 		bq_res->ispfilter_bq.height_bq = 12 / 2;
++
++		if (IS_BYT) {
++			pad_width = 12;
++			pad_height = 12;
++		} else {
++			pad_width = pad_w;
++			pad_height = pad_h;
++		}
++
++		/* the GDC output resolution */
++		bq_res->output_bq.width_bq =
++			input_config->effective_res.width / 2;
++		bq_res->output_bq.height_bq =
++			input_config->effective_res.height / 2;
++
++		cropped_w = input_config->input_res.width - pad_width;
++		cropped_h = input_config->input_res.height - pad_height;
++
++		/* the GDC input resolution */
++		bq_res->source_bq.width_bq = cropped_w / 2;
++		bq_res->source_bq.height_bq = cropped_h / 2;
+ 		/* spatial filter shift, always 4 pixels */
+ 		bq_res->gdc_shift_bq.width_bq = 4 / 2;
+ 		bq_res->gdc_shift_bq.height_bq = 4 / 2;
+ 
+ 		if (asd->params.video_dis_en) {
+-			bq_res->envelope_bq.width_bq = pipe_cfg->dvs_envelope.width
+-					/ 2 - bq_res->ispfilter_bq.width_bq;
+-			bq_res->envelope_bq.height_bq = pipe_cfg->dvs_envelope.height
+-					/ 2 - bq_res->ispfilter_bq.height_bq;
++			unsigned int evlp_w, evlp_h;
++
++			evlp_w = min(pipe_cfg->dvs_envelope.width,
++				     rounddown(input_config->effective_res.
++					       width / 5, ATOM_ISP_STEP_WIDTH));
++			evlp_h = min(pipe_cfg->dvs_envelope.height,
++				     rounddown(input_config->effective_res.
++					       height / 5,
++					       ATOM_ISP_STEP_HEIGHT));
++			evlp_w = min(
++				(unsigned int)(bq_res->source_bq.width_bq -
++				bq_res->output_bq.width_bq) * 2, evlp_w);
++			evlp_h = min(
++				(unsigned int)(bq_res->source_bq.height_bq -
++				bq_res->output_bq.height_bq) * 2, evlp_h);
++			bq_res->envelope_bq.width_bq =
++				evlp_w / 2 - bq_res->ispfilter_bq.width_bq;
++			bq_res->envelope_bq.height_bq =
++				evlp_h / 2 - bq_res->ispfilter_bq.height_bq;
+ 		}
+ 	} else {
+ 		unsigned int w_padding;
+ 		unsigned int gdc_effective_input = 0;
+ 
++		/* the GDC output resolution */
++		bq_res->output_bq.width_bq =
++			pipe_cfg->output_info[0].res.width / 2;
++		bq_res->output_bq.height_bq =
++			pipe_cfg->output_info[0].res.height / 2;
++
+ 		/* For GDC:
+ 		 * gdc_effective_input = effective_input + envelope
+ 		 *
+diff --git a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_subdev.c b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_subdev.c
+index dd74c41..2594493 100644
+--- a/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_subdev.c
++++ b/drivers/external_drivers/camera/drivers/media/pci/atomisp2/atomisp_driver/atomisp_subdev.c
+@@ -389,8 +389,20 @@ int atomisp_subdev_set_selection(struct v4l2_subdev *sd,
+ 	switch (pad) {
+ 	case ATOMISP_SUBDEV_PAD_SINK: {
+ 		/* Only crop target supported on sink pad. */
+-		unsigned int dvs_w, dvs_h;
++		unsigned int dvs_w = 0;
++		unsigned int dvs_h = 0;
+ 
++#ifndef CONFIG_EXTERNAL_BTNS_CAMERA
++		if (!isp_sd->params.video_dis_en &&
++			isp_sd->run_mode->val == ATOMISP_RUN_MODE_VIDEO) {
++			/*
++			 * For CSS2.0, digital zoom needs to set dvs envelope to
++			 * 12 when dvs is disabled.
++			 */
++			dvs_w = 12;
++			dvs_h = 12;
++		}
++#endif
+ 		crop[pad]->width = ffmt[pad]->width;
+ 		crop[pad]->height = ffmt[pad]->height;
+ 
+@@ -416,18 +428,14 @@ int atomisp_subdev_set_selection(struct v4l2_subdev *sd,
+ 		if (isp->inputs[isp_sd->input_curr].type == SOC_CAMERA)
+ 			isp_sd->params.video_dis_en = 0;
+ 
+-		if (isp_sd->params.video_dis_en &&
+-		    isp_sd->run_mode->val == ATOMISP_RUN_MODE_VIDEO &&
+-		    !isp_sd->continuous_mode->val) {
+-			/* This resolution contains 20 % of DVS slack
+-			 * (of the desired captured image before
+-			 * scaling, or 1 / 6 of what we get from the
+-			 * sensor) in both width and height. Remove
+-			 * it. */
+-			crop[pad]->width = roundup(crop[pad]->width * 5 / 6,
+-						   ATOM_ISP_STEP_WIDTH);
+-			crop[pad]->height = roundup(crop[pad]->height * 5 / 6,
+-						    ATOM_ISP_STEP_HEIGHT);
++		if (isp_sd->run_mode->val == ATOMISP_RUN_MODE_VIDEO &&
++			!isp_sd->continuous_mode->val) {
++			dvs_w = rounddown(crop[pad]->width - r->width,
++				ATOM_ISP_STEP_WIDTH);
++			dvs_h = rounddown(crop[pad]->height - r->height,
++				ATOM_ISP_STEP_HEIGHT);
++			crop[pad]->width = r->width;
++			crop[pad]->height = r->height;
+ 		}
+ 
+ 		crop[pad]->width = min(crop[pad]->width, r->width);
+@@ -447,23 +455,6 @@ int atomisp_subdev_set_selection(struct v4l2_subdev *sd,
+ 		if (which == V4L2_SUBDEV_FORMAT_TRY)
+ 			break;
+ 
+-		if (isp_sd->params.video_dis_en &&
+-		    isp_sd->run_mode->val == ATOMISP_RUN_MODE_VIDEO &&
+-		    !isp_sd->continuous_mode->val) {
+-			dvs_w = rounddown(crop[pad]->width / 5,
+-					  ATOM_ISP_STEP_WIDTH);
+-			dvs_h = rounddown(crop[pad]->height / 5,
+-					  ATOM_ISP_STEP_HEIGHT);
+-		} else if (!isp_sd->params.video_dis_en &&
+-			   isp_sd->run_mode->val == ATOMISP_RUN_MODE_VIDEO) {
+-			/*
+-			 * For CSS2.0, digital zoom needs to set dvs envelope to 12
+-			 * when dvs is disabled.
+-			 */
+-			dvs_w = dvs_h = 12;
+-		} else
+-			dvs_w = dvs_h = 0;
+-
+ 		atomisp_css_video_set_dis_envelope(isp_sd, dvs_w, dvs_h);
+ 		atomisp_css_input_set_effective_resolution(isp_sd, stream_id,
+ 					crop[pad]->width, crop[pad]->height);
+-- 
+1.9.1
+

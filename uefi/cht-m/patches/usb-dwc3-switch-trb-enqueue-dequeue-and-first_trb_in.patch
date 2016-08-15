@@ -1,0 +1,71 @@
+From 01e2f92db967d6452f230fdeae829e72830bfef2 Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <felipe.balbi@linux.intel.com>
+Date: Tue, 5 Apr 2016 12:42:15 +0300
+Subject: [PATCH 62/78] usb: dwc3: switch trb enqueue/dequeue and
+ first_trb_index to u8
+
+We *know* that we have 1 PAGE (4096 bytes) for our
+TRB poll. We also know the size of each TRB and know
+that we can fit 256 of them in one PAGE. By using a
+u8 type we can make sure that:
+
+	enqueue++ % 256;
+
+gets optimized to an increment only.
+
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit c28f82595dde97dda0b769f78f0faea78acd993b)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: Ia9e24f56c84ac2241dd817ba64cc94ce6c27da77
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-19337
+Reviewed-on: https://android.intel.com:443/511187
+---
+ drivers/usb/dwc3/core.h | 16 +++++++++++++---
+ 1 file changed, 13 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/usb/dwc3/core.h b/drivers/usb/dwc3/core.h
+index d5d3612..a1d533d 100644
+--- a/drivers/usb/dwc3/core.h
++++ b/drivers/usb/dwc3/core.h
+@@ -422,8 +422,6 @@ struct dwc3_ep {
+ 
+ 	struct dwc3_trb		*trb_pool;
+ 	dma_addr_t		trb_pool_dma;
+-	u32			trb_enqueue;
+-	u32			trb_dequeue;
+ 	const struct usb_ss_ep_comp_descriptor *comp_desc;
+ 	struct dwc3		*dwc;
+ 
+@@ -438,6 +436,18 @@ struct dwc3_ep {
+ 	/* This last one is specific to EP0 */
+ #define DWC3_EP0_DIR_IN		(1 << 31)
+ 
++	/*
++	 * IMPORTANT: we *know* we have 256 TRBs in our @trb_pool, so we will
++	 * use a u8 type here. If anybody decides to increase number of TRBs to
++	 * anything larger than 256 - I can't see why people would want to do
++	 * this though - then this type needs to be changed.
++	 *
++	 * By using u8 types we ensure that our % operator when incrementing
++	 * enqueue and dequeue get optimized away by the compiler.
++	 */
++	u8			trb_enqueue;
++	u8			trb_dequeue;
++
+ 	u8			number;
+ 	u8			type;
+ 	u8			resource_index;
+@@ -593,8 +603,8 @@ struct dwc3_request {
+ 	struct usb_request	request;
+ 	struct list_head	list;
+ 	struct dwc3_ep		*dep;
+-	u32			first_trb_index;
+ 
++	u8			first_trb_index;
+ 	u8			epnum;
+ 	struct dwc3_trb		*trb;
+ 	dma_addr_t		trb_dma;
+-- 
+1.9.1
+

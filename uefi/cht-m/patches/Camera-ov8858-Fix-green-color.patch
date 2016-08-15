@@ -1,0 +1,74 @@
+From ec9a3f6610f7afb0afc6e2c2b506d5e7579fabc9 Mon Sep 17 00:00:00 2001
+From: Per Persson <per.persson@intel.com>
+Date: Tue, 10 May 2016 10:01:42 +0200
+Subject: [PATCH 1/2] Camera: ov8858: Fix green color
+
+The patch:
+  OV8858: Enabling sensor ov8858 for CHT-T3 MRD
+  Change-Id I9ad151c9ff36d0d0d5edcbed32c5fab3c49872eb
+was not correctly applied.
+
+This patch fixes the errors that was earlier introduced and
+was causing greenish rear camera.
+
+Change-Id: If1b107d8d3c6337d0cd01caed577668cb864d786
+Original-Tracked_On: https://jira01.devtools.intel.com/browse/OAM-28832
+Signed-off-by: Per Persson <per.persson@intel.com>
+Reviewed-on: https://icggerrit.ir.intel.com/122265
+Build: Dessert M BXT RVP (SC)
+Validation-Android: Dessert M BXT RVP (SC)
+Approver: Mikael Persson <mikael.persson@intel.com>
+Integrator: WeiX Meng <weix.meng@intel.com>
+Reviewed-by: WeiX Meng <weix.meng@intel.com>
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-32845
+Signed-off-by: Tao Wei <wei.tao@intel.com>
+Reviewed-on: https://android.intel.com:443/511963
+---
+ drivers/external_drivers/camera/drivers/media/i2c/ov8858.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/external_drivers/camera/drivers/media/i2c/ov8858.c b/drivers/external_drivers/camera/drivers/media/i2c/ov8858.c
+index 71d9e79..bdbf088 100644
+--- a/drivers/external_drivers/camera/drivers/media/i2c/ov8858.c
++++ b/drivers/external_drivers/camera/drivers/media/i2c/ov8858.c
+@@ -1008,11 +1008,12 @@ static int __gpio_ctrl(struct v4l2_subdev *sd, bool flag)
+ 		return dev->platform_data->gpio_ctrl(sd, flag);
+ 
+ 
+-#ifdef CONFIG_GMIN_INTEL_MID
+ 	/*Just to execute specific code  dintinguishing between HR and MRD */
+ 	if (strcmp(dmi_get_system_info(DMI_BOARD_NAME), CHT_HR_DEV_NAME) == 0) {
++#ifdef CONFIG_GMIN_INTEL_MID
+ 		if (dev->platform_data->gpio0_ctrl)
+ 			return dev->platform_data->gpio0_ctrl(sd, flag);
++#endif
+ 	} else {
+ 		if (dev->platform_data->gpio0_ctrl) {
+ 			int ret;
+@@ -1022,7 +1023,6 @@ static int __gpio_ctrl(struct v4l2_subdev *sd, bool flag)
+ 		return ret;
+ 		}
+ 	}
+-#endif
+ 	dev_err(&client->dev, "failed to find platform gpio callback\n");
+ 
+ 	return -EINVAL;
+@@ -1662,7 +1662,6 @@ static int ov8858_s_mbus_fmt(struct v4l2_subdev *sd,
+ 		dev->regs = res->regs;
+ 
+ 	ret = ov8858_write_reg_array(client, dev->regs);
+-#ifdef CHT_HR_DEV_NAME
+ 	/* W/A: For MRD, the valid BLC lines are different than in HR
+ 	 * making the image look green. */
+ 	if (strcmp(dmi_get_system_info(DMI_BOARD_NAME), CHT_HR_DEV_NAME) != 0) {
+@@ -1672,7 +1671,6 @@ static int ov8858_s_mbus_fmt(struct v4l2_subdev *sd,
+ 		else
+ 			ret = ov8858_write_reg_array(client, ov8858_BLC_MRD);
+ 	}
+-#endif
+ 	if (ret)
+ 		goto out;
+ 
+-- 
+1.9.1
+

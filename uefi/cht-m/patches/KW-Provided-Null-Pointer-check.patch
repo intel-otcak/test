@@ -1,0 +1,39 @@
+From 08257019ad96afadeaa2e5b757e5f37ee0c8a3ca Mon Sep 17 00:00:00 2001
+From: thakur2x <santosh.krx.thakur@intel.com>
+Date: Wed, 13 Jul 2016 16:14:01 +0530
+Subject: [PATCH 1/3] [KW] Provided Null Pointer check
+
+Change-Id: Iaf4b7c5c120153005fe189f54e1ab966a0ffe9dd
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-35499
+Signed-off-by: thakur2x <santosh.krx.thakur@intel.com>
+Reviewed-on: https://android.intel.com:443/523066
+---
+ sound/soc/intel/platform-libs/controls_v2_dpcm.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/sound/soc/intel/platform-libs/controls_v2_dpcm.c b/sound/soc/intel/platform-libs/controls_v2_dpcm.c
+index 08bc6c9..d767fc5 100644
+--- a/sound/soc/intel/platform-libs/controls_v2_dpcm.c
++++ b/sound/soc/intel/platform-libs/controls_v2_dpcm.c
+@@ -631,7 +631,7 @@ static int sst_voice_mode_put(struct snd_kcontrol *kcontrol,
+ 
+ 	/* disable and enable the voice path
+ 	   so that the mode change takes effect */
+-	if (w->power) {
++	if (w && w->power) {
+ 		sst_send_speech_path(sst, SST_SWITCH_OFF);
+ 		sst_send_speech_path(sst, SST_SWITCH_ON);
+ 
+@@ -639,7 +639,8 @@ static int sst_voice_mode_put(struct snd_kcontrol *kcontrol,
+ 		for (i = 1; i < ARRAY_SIZE(sst_voice_widgets); i++) {
+ 			w = snd_soc_dapm_find_widget(&platform->dapm,
+ 						sst_voice_widgets[i], true);
+-			sst_send_pipe_module_params(w);
++			if (w)
++				sst_send_pipe_module_params(w);
+ 		}
+ 	}
+ 	return 0;
+-- 
+1.9.1
+

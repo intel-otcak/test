@@ -1,0 +1,122 @@
+From 58d804f09f66185753e3cf23bea231c73aa5cf65 Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <felipe.balbi@linux.intel.com>
+Date: Wed, 30 Mar 2016 09:39:34 +0300
+Subject: [PATCH 53/78] usb: dwc3: gadget: pass ev_buff as cookie to irq
+ handler
+
+we don't plan on using multiple event buffers, but
+if we find a good use case for it, this little trick
+will help us avoid a loop in hardirq handler looping
+for each and every event buffer.
+
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit dea520a4a28307034b1842adbfde947e1ed385d2)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I0c2fe38a8102abea86e36be5d87c901abe241743
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-19337
+Reviewed-on: https://android.intel.com:443/511178
+---
+ drivers/usb/dwc3/gadget.c | 30 ++++++++++++++----------------
+ 1 file changed, 14 insertions(+), 16 deletions(-)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index 285ec5f..b79d616 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -1712,7 +1712,7 @@ static int dwc3_gadget_start(struct usb_gadget *g,
+ 
+ 	irq = platform_get_irq(to_platform_device(dwc->dev), 0);
+ 	ret = request_threaded_irq(irq, dwc3_interrupt, dwc3_thread_interrupt,
+-			IRQF_SHARED, "dwc3", dwc);
++			IRQF_SHARED, "dwc3", dwc->ev_buf);
+ 	if (ret) {
+ 		dev_err(dwc->dev, "failed to request irq #%d --> %d\n",
+ 				irq, ret);
+@@ -1810,7 +1810,7 @@ err2:
+ err1:
+ 	spin_unlock_irqrestore(&dwc->lock, flags);
+ 
+-	free_irq(irq, dwc);
++	free_irq(irq, dwc->ev_buf);
+ 
+ err0:
+ 	pm_runtime_put_autosuspend(dwc->dev);
+@@ -1840,7 +1840,7 @@ static int dwc3_gadget_stop(struct usb_gadget *g,
+ 	pm_runtime_put_autosuspend(dwc->dev);
+ 
+ 	irq = platform_get_irq(to_platform_device(dwc->dev), 0);
+-	free_irq(irq, dwc);
++	free_irq(irq, dwc->ev_buf);
+ 
+ 	return 0;
+ }
+@@ -2774,14 +2774,13 @@ static void dwc3_process_event_entry(struct dwc3 *dwc,
+ 	}
+ }
+ 
+-static irqreturn_t dwc3_process_event_buf(struct dwc3 *dwc)
++static irqreturn_t dwc3_process_event_buf(struct dwc3_event_buffer *evt)
+ {
+-	struct dwc3_event_buffer *evt;
++	struct dwc3 *dwc = evt->dwc;
+ 	irqreturn_t ret = IRQ_NONE;
+ 	int left;
+ 	u32 reg;
+ 
+-	evt = dwc->ev_buf;
+ 	left = evt->count;
+ 
+ 	if (!(evt->flags & DWC3_EVENT_PENDING))
+@@ -2821,27 +2820,26 @@ static irqreturn_t dwc3_process_event_buf(struct dwc3 *dwc)
+ 	return ret;
+ }
+ 
+-static irqreturn_t dwc3_thread_interrupt(int irq, void *_dwc)
++static irqreturn_t dwc3_thread_interrupt(int irq, void *_evt)
+ {
+-	struct dwc3 *dwc = _dwc;
++	struct dwc3_event_buffer *evt = _evt;
++	struct dwc3 *dwc = evt->dwc;
+ 	unsigned long flags;
+ 	irqreturn_t ret = IRQ_NONE;
+ 
+ 	spin_lock_irqsave(&dwc->lock, flags);
+-	ret = dwc3_process_event_buf(dwc);
++	ret = dwc3_process_event_buf(evt);
+ 	spin_unlock_irqrestore(&dwc->lock, flags);
+ 
+ 	return ret;
+ }
+ 
+-static irqreturn_t dwc3_check_event_buf(struct dwc3 *dwc)
++static irqreturn_t dwc3_check_event_buf(struct dwc3_event_buffer *evt)
+ {
+-	struct dwc3_event_buffer *evt;
++	struct dwc3 *dwc = evt->dwc;
+ 	u32 count;
+ 	u32 reg;
+ 
+-	evt = dwc->ev_buf;
+-
+ 	count = dwc3_readl(dwc->regs, DWC3_GEVNTCOUNT(0));
+ 	count &= DWC3_GEVNTCOUNT_MASK;
+ 	if (!count)
+@@ -2858,11 +2856,11 @@ static irqreturn_t dwc3_check_event_buf(struct dwc3 *dwc)
+ 	return IRQ_WAKE_THREAD;
+ }
+ 
+-static irqreturn_t dwc3_interrupt(int irq, void *_dwc)
++static irqreturn_t dwc3_interrupt(int irq, void *_evt)
+ {
+-	struct dwc3			*dwc = _dwc;
++	struct dwc3_event_buffer	*evt = _evt;
+ 
+-	return dwc3_check_event_buf(dwc);
++	return dwc3_check_event_buf(evt);
+ }
+ 
+ 
+-- 
+1.9.1
+

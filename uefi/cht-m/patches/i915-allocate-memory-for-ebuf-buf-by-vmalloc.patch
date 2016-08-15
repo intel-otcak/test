@@ -1,0 +1,71 @@
+From 857275d8e12f5658435b328132dd29a8e361d69f Mon Sep 17 00:00:00 2001
+From: Zhang Yanmin <yanmin.zhang@intel.com>
+Date: Mon, 18 Apr 2016 03:18:24 +0800
+Subject: [PATCH 3/3] i915: allocate memory for ebuf->buf by vmalloc
+
+When system memory is used up, userspace dumps j915 objects.
+ebuf->buf might be extended by kmalloc. Sometimes, the kmalloc
+need a order-4 allocation. It's a hard request when free memory
+is quite low.
+
+The patch changes kmalloc calling to vmalloc.
+
+Change-Id: Ia5204d72d7b18373e93dd0f0cf724ab5510373e1
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-29487
+Signed-off-by: Zhang Yanmin <yanmin.zhang@intel.com>
+Reviewed-on: https://android.intel.com:443/495720
+---
+ drivers/gpu/drm/i915/i915_drv.h       | 2 +-
+ drivers/gpu/drm/i915/i915_gpu_error.c | 9 ++++-----
+ 2 files changed, 5 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/gpu/drm/i915/i915_drv.h b/drivers/gpu/drm/i915/i915_drv.h
+index baae323..23374bd 100644
+--- a/drivers/gpu/drm/i915/i915_drv.h
++++ b/drivers/gpu/drm/i915/i915_drv.h
+@@ -3170,7 +3170,7 @@ int i915_obj_state_buf_init(struct drm_i915_error_state_buf *eb,
+ static inline void i915_error_state_buf_release(
+ 	struct drm_i915_error_state_buf *eb)
+ {
+-	kfree(eb->buf);
++	vfree(eb->buf);
+ }
+ void i915_capture_error_state(struct drm_device *dev, const char *error_msg);
+ void i915_error_state_get(struct drm_device *dev,
+diff --git a/drivers/gpu/drm/i915/i915_gpu_error.c b/drivers/gpu/drm/i915/i915_gpu_error.c
+index 7684c0c..3b132a3 100644
+--- a/drivers/gpu/drm/i915/i915_gpu_error.c
++++ b/drivers/gpu/drm/i915/i915_gpu_error.c
+@@ -483,17 +483,16 @@ int i915_error_state_buf_init(struct drm_i915_error_state_buf *ebuf,
+ 	 * so that we can move it to start position.
+ 	 */
+ 	ebuf->size = count + 1 > PAGE_SIZE ? count + 1 : PAGE_SIZE;
+-	ebuf->buf = kmalloc(ebuf->size,
+-				GFP_TEMPORARY | __GFP_NORETRY | __GFP_NOWARN);
++	ebuf->buf = vmalloc(ebuf->size);
+ 
+ 	if (ebuf->buf == NULL) {
+ 		ebuf->size = PAGE_SIZE;
+-		ebuf->buf = kmalloc(ebuf->size, GFP_TEMPORARY);
++		ebuf->buf = vmalloc(ebuf->size);
+ 	}
+ 
+ 	if (ebuf->buf == NULL) {
+ 		ebuf->size = 128;
+-		ebuf->buf = kmalloc(ebuf->size, GFP_TEMPORARY);
++		ebuf->buf = vmalloc(ebuf->size);
+ 	}
+ 
+ 	if (ebuf->buf == NULL)
+@@ -509,7 +508,7 @@ int i915_obj_state_buf_init(struct drm_i915_error_state_buf *ebuf,
+ {
+ 	memset(ebuf, 0, sizeof(*ebuf));
+ 
+-	ebuf->buf = kmalloc(count, GFP_KERNEL);
++	ebuf->buf = vmalloc(count);
+ 
+ 	if (ebuf->buf == NULL)
+ 		return -ENOMEM;
+-- 
+1.9.1
+

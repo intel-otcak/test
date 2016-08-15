@@ -1,0 +1,34 @@
+From 520b92c6b558e3be1dcc0bfefa5d8de06d9fe584 Mon Sep 17 00:00:00 2001
+From: Subhankar Paul <subhankar.paul@intel.com>
+Date: Tue, 17 May 2016 10:28:32 +0530
+Subject: [PATCH 16/78] Audio: Allocate compress offload ddr ring buffer in DMA
+ zone
+
+Since ddr ring buffer memory is used for DMA transfer, kmalloc
+need to allocate memory in DMA zone.
+
+Change-Id: Ia0f95a90d1e00c562dc7a55745101ecb6ea3f34e
+Signed-off-by: Subhankar Paul <subhankar.paul@intel.com>
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-33006
+Reviewed-on: https://android.intel.com:443/506409
+Reviewed-on: https://android.intel.com:443/510891
+---
+ sound/core/compress_offload.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/sound/core/compress_offload.c b/sound/core/compress_offload.c
+index d607af2..ef971db 100644
+--- a/sound/core/compress_offload.c
++++ b/sound/core/compress_offload.c
+@@ -477,7 +477,7 @@ static int snd_compr_allocate_buffer(struct snd_compr_stream *stream,
+ 		 * the data from core
+ 		 */
+ 	} else {
+-		buffer = kmalloc(buffer_size, GFP_KERNEL);
++		buffer = kmalloc(buffer_size, GFP_KERNEL | GFP_DMA);
+ 		if (!buffer)
+ 			return -ENOMEM;
+ 	}
+-- 
+1.9.1
+

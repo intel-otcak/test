@@ -1,0 +1,50 @@
+From a1ffbdd8d3f027bd523846f8d1f55373fc632cd7 Mon Sep 17 00:00:00 2001
+From: Janusz Dziedzic <januszx.dziedzic@intel.com>
+Date: Wed, 20 Apr 2016 10:22:51 +0200
+Subject: [PATCH 10/78] usb: dwc3: fix trace compilation issue on 3.14 kernel
+
+Seems event name is prohibited in 3.14 kernel.
+
+Change-Id: I8cd5033227da5990582893f00097207bc73e8e1d
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-29845
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+Reviewed-on: https://android.intel.com:443/508186
+---
+ drivers/usb/dwc3/trace.h | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/usb/dwc3/trace.h b/drivers/usb/dwc3/trace.h
+index 3ac7252..de81646 100644
+--- a/drivers/usb/dwc3/trace.h
++++ b/drivers/usb/dwc3/trace.h
+@@ -63,20 +63,20 @@ DEFINE_EVENT(dwc3_log_msg, dwc3_ep0,
+ );
+ 
+ DECLARE_EVENT_CLASS(dwc3_log_event,
+-	TP_PROTO(u32 event),
+-	TP_ARGS(event),
++	TP_PROTO(u32 event_raw),
++	TP_ARGS(event_raw),
+ 	TP_STRUCT__entry(
+-		__field(u32, event)
++		__field(u32, event_raw)
+ 	),
+ 	TP_fast_assign(
+-		__entry->event = event;
++		__entry->event_raw = event_raw;
+ 	),
+-	TP_printk("event %08x", __entry->event)
++	TP_printk("event %08x", __entry->event_raw)
+ );
+ 
+ DEFINE_EVENT(dwc3_log_event, dwc3_event,
+-	TP_PROTO(u32 event),
+-	TP_ARGS(event)
++	TP_PROTO(u32 event_raw),
++	TP_ARGS(event_raw)
+ );
+ 
+ DECLARE_EVENT_CLASS(dwc3_log_ctrl,
+-- 
+1.9.1
+

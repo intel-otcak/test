@@ -1,0 +1,62 @@
+From 67bc46970f16dfc56a8033f49f087e9a53f7f754 Mon Sep 17 00:00:00 2001
+From: Janusz Dziedzic <januszx.dziedzic@intel.com>
+Date: Thu, 23 Jun 2016 10:09:55 +0200
+Subject: [PATCH 11/13] usb: dwc3: gadget: Warn on low events left
+
+In case of super speed and many trb queued to
+the hardware warn on when low events left.
+
+Change-Id: I493030b45d8afabfafdafe3858255ec54bd5c5c2
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34491
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+Reviewed-on: https://android.intel.com:443/519135
+---
+ drivers/usb/dwc3/core.c   | 1 +
+ drivers/usb/dwc3/core.h   | 1 +
+ drivers/usb/dwc3/gadget.c | 6 ++++++
+ 3 files changed, 8 insertions(+)
+
+diff --git a/drivers/usb/dwc3/core.c b/drivers/usb/dwc3/core.c
+index 549db424..3da437d 100644
+--- a/drivers/usb/dwc3/core.c
++++ b/drivers/usb/dwc3/core.c
+@@ -376,6 +376,7 @@ static int dwc3_alloc_event_buffers(struct dwc3 *dwc, unsigned length)
+ 		return PTR_ERR(evt);
+ 	}
+ 	dwc->ev_buf = evt;
++	dwc->ev_low_level = length/2;
+ 
+ 	return 0;
+ }
+diff --git a/drivers/usb/dwc3/core.h b/drivers/usb/dwc3/core.h
+index 9828739..0265dc6 100644
+--- a/drivers/usb/dwc3/core.h
++++ b/drivers/usb/dwc3/core.h
+@@ -715,6 +715,7 @@ struct dwc3 {
+ 	struct resource		xhci_resources[DWC3_XHCI_RESOURCES_NUM];
+ 
+ 	struct dwc3_event_buffer *ev_buf;
++	unsigned int		ev_low_level;
+ 	struct dwc3_ep		*eps[DWC3_ENDPOINTS_NUM];
+ 
+ 	struct usb_gadget	gadget;
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index 75f23ea..1ce87c5 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -2885,6 +2885,12 @@ static irqreturn_t dwc3_process_event_buf(struct dwc3_event_buffer *evt)
+ 	if (!(evt->flags & DWC3_EVENT_PENDING))
+ 		return IRQ_NONE;
+ 
++	if (left > dwc->ev_low_level) {
++		dwc->ev_low_level = left;
++		dev_err(dwc->dev, "events used %d\n",
++			dwc->ev_low_level/DWC3_EVENT_SIZE);
++	}
++
+ 	while (left > 0) {
+ 		union dwc3_event event;
+ 
+-- 
+1.9.1
+

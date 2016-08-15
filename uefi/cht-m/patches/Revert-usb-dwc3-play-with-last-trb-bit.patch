@@ -1,0 +1,41 @@
+From 03439f5ee8eb4c09fa036d2d02168796f785c352 Mon Sep 17 00:00:00 2001
+From: Janusz Dziedzic <januszx.dziedzic@intel.com>
+Date: Fri, 24 Jun 2016 10:13:52 +0200
+Subject: [PATCH 13/13] Revert "usb: dwc3: play with last trb bit"
+
+This reverts commit 17cc204915672ceaad181893e2897dfc4d82e046.
+
+This coused "still owned by HW" warnings in case of ndis
+interface.
+
+Change-Id: I095f932b4e31ff3db7e42dc14e53891612cfcda1
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34491
+Reviewed-on: https://android.intel.com:443/519161
+---
+ drivers/usb/dwc3/gadget.c | 9 ---------
+ 1 file changed, 9 deletions(-)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index 1ce87c5..2d5da15 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -804,15 +804,6 @@ static void dwc3_prepare_one_trb(struct dwc3_ep *dep,
+ 			length, last ? " last" : "",
+ 			chain ? " chain" : "");
+ 
+-	/*
+-	 * When trying to issue Update Transfer, we can remove LST bit from
+-	 * previous TRB and avoid a XferComplete
+-	 */
+-	if (dep->flags & DWC3_EP_BUSY) {
+-		trb = &dep->trb_pool[dep->trb_enqueue - 1];
+-		if (trb->ctrl & DWC3_TRB_CTRL_HWO)
+-			trb->ctrl &= ~DWC3_TRB_CTRL_LST;
+-	}
+ 
+ 	trb = &dep->trb_pool[dep->trb_enqueue];
+ 
+-- 
+1.9.1
+

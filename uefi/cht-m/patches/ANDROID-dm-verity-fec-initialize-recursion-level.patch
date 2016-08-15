@@ -1,0 +1,32 @@
+From 658b9a100d8ac647772bfa01e156cfc7d7b76cc0 Mon Sep 17 00:00:00 2001
+From: Sami Tolvanen <samitolvanen@google.com>
+Date: Fri, 17 Jun 2016 11:31:17 -0700
+Subject: [PATCH 3/3] ANDROID: dm verity fec: initialize recursion level
+
+Explicitly initialize recursion level to zero at the beginning of each
+I/O operation.
+
+Bug: 28943429
+Change-Id: I00c612be2b8c22dd5afb65a739551df91cb324fc
+Signed-off-by: Sami Tolvanen <samitolvanen@google.com>
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-35882
+Reviewed-on: https://android.intel.com:443/525191
+---
+ drivers/md/dm-verity-fec.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/md/dm-verity-fec.c b/drivers/md/dm-verity-fec.c
+index c24a434..fa1a792 100644
+--- a/drivers/md/dm-verity-fec.c
++++ b/drivers/md/dm-verity-fec.c
+@@ -537,6 +537,7 @@ void verity_fec_init_io(struct dm_verity_io *io)
+ 	memset(fio->bufs, 0, sizeof(fio->bufs));
+ 	fio->nbufs = 0;
+ 	fio->output = NULL;
++	fio->level = 0;
+ }
+ 
+ /*
+-- 
+1.9.1
+

@@ -1,0 +1,49 @@
+From 314858fc08a17c531ecea3fb0c9b23cc6a836696 Mon Sep 17 00:00:00 2001
+From: Tim Murray <timmurray@google.com>
+Date: Tue, 19 Jan 2016 16:33:27 -0800
+Subject: [PATCH 714/769] ANDROID: dm-crypt: run in a WQ_HIGHPRI workqueue
+
+(cherry pick from commit ad3ac5180979e5dd1f84e4a807f76fb9fb19f814)
+
+Running dm-crypt in a standard workqueue results in IO competing for CPU
+time with standard user apps, which can lead to pipeline bubbles and
+seriously degraded performance. Move to a WQ_HIGHPRI workqueue to
+protect against that.
+
+Signed-off-by: Tim Murray <timmurray@google.com>
+Bug: 25392275
+Change-Id: I589149a31c7b5d322fe2ed5b2476b1f6e3d5ee6f
+---
+ drivers/md/dm-crypt.c | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/md/dm-crypt.c b/drivers/md/dm-crypt.c
+index 937516f..f3e5a27 100644
+--- a/drivers/md/dm-crypt.c
++++ b/drivers/md/dm-crypt.c
+@@ -1829,14 +1829,20 @@ static int crypt_ctr(struct dm_target *ti, unsigned int argc, char **argv)
+ 	}
+ 
+ 	ret = -ENOMEM;
+-	cc->io_queue = alloc_workqueue("kcryptd_io", WQ_MEM_RECLAIM, 1);
++	cc->io_queue = alloc_workqueue("kcryptd_io",
++				       WQ_HIGHPRI |
++				       WQ_NON_REENTRANT|
++				       WQ_MEM_RECLAIM,
++				       1);
+ 	if (!cc->io_queue) {
+ 		ti->error = "Couldn't create kcryptd io queue";
+ 		goto bad;
+ 	}
+ 
+ 	cc->crypt_queue = alloc_workqueue("kcryptd",
+-					  WQ_CPU_INTENSIVE | WQ_MEM_RECLAIM, 1);
++					  WQ_HIGHPRI |
++					  WQ_MEM_RECLAIM |
++					  WQ_UNBOUND, num_online_cpus());
+ 	if (!cc->crypt_queue) {
+ 		ti->error = "Couldn't create kcryptd queue";
+ 		goto bad;
+-- 
+1.9.1
+

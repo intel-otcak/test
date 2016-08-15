@@ -1,0 +1,43 @@
+From 9cc334ff26b6773b78b8001bff6566946666d295 Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <felipe.balbi@linux.intel.com>
+Date: Thu, 10 Mar 2016 14:40:31 +0200
+Subject: [PATCH 49/78] usb: dwc3: increase maximum number of TRBs per endpoint
+
+previously we were using a maximum of 32 TRBs per
+endpoint. With each TRB being 16 bytes long, we were
+using 512 bytes of memory for each endpoint.
+
+However, SLAB/SLUB will always allocate PAGE_SIZE
+chunks. In order to better utilize the memory we
+allocate and to allow deeper queues for gadgets
+which would benefit from it (g_ether comes to mind),
+let's increase the maximum to 256 TRBs which rounds
+up to 4096 bytes for each endpoint.
+
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit 8495036e986bdc7e82523d47097e7833d2782ff9)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: Iaea7b93d1580a134f273f4e42c1c44174f1a9465
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-19337
+Reviewed-on: https://android.intel.com:443/511174
+---
+ drivers/usb/dwc3/core.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/usb/dwc3/core.h b/drivers/usb/dwc3/core.h
+index e711c39e..f85457d 100644
+--- a/drivers/usb/dwc3/core.h
++++ b/drivers/usb/dwc3/core.h
+@@ -391,7 +391,7 @@ struct dwc3_event_buffer {
+ #define DWC3_EP_DIRECTION_TX	true
+ #define DWC3_EP_DIRECTION_RX	false
+ 
+-#define DWC3_TRB_NUM		32
++#define DWC3_TRB_NUM		256
+ #define DWC3_TRB_MASK		(DWC3_TRB_NUM - 1)
+ 
+ /**
+-- 
+1.9.1
+

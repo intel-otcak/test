@@ -1,0 +1,48 @@
+From b93ceb4f85344851635a20443ee77cedc211affb Mon Sep 17 00:00:00 2001
+From: haiqiang yao <haiqiangx.yao@intel.com>
+Date: Thu, 7 Apr 2016 17:47:09 +0800
+Subject: [PATCH 2/3] atomisp.h: Add ATOMISP_IOC_G_ISP_FRAME_PARAMS
+
+this patch will add a new ATOMISP_IOC_G_ISP_FRAME_PARAMS in
+atomisp.h and the camera3hal can get the isp frame params
+to call it.
+
+Change-Id: Iba5d16677099dc21b4b890856cb295ab0a52899e
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-28550
+Signed-off-by: haiqiang yao <haiqiangx.yao@intel.com>
+Reviewed-on: https://android.intel.com:443/495616
+---
+ include/linux/atomisp.h | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/include/linux/atomisp.h b/include/linux/atomisp.h
+index dff1281..af90f4f 100644
+--- a/include/linux/atomisp.h
++++ b/include/linux/atomisp.h
+@@ -1301,6 +1301,13 @@ struct atomisp_sensor_ae_bracketing_lut {
+ 	unsigned int lut_size;
+ };
+ 
++struct atomisp_isp_frame_params{
++	__u16 isp_horizontal_crop_offset;
++	__u16 isp_vertical_crop_offset;
++	__u16 isp_crop_image_width;
++	__u16 isp_crop_image_height;
++};
++
+ /*Private IOCTLs for ISP */
+ #define ATOMISP_IOC_G_XNR \
+ 	_IOR('v', BASE_VIDIOC_PRIVATE + 0, int)
+@@ -1554,6 +1561,9 @@ struct atomisp_sensor_ae_bracketing_lut {
+ #define ATOMISP_IOC_G_UPDATE_EXPOSURE \
+ 	_IOWR('v', BASE_VIDIOC_PRIVATE + 49, struct atomisp_update_exposure)
+ 
++#define ATOMISP_IOC_G_ISP_FRAME_PARAMS \
++	_IOWR('v', BASE_VIDIOC_PRIVATE + 50, struct atomisp_isp_frame_params)
++
+ /*
+  * Reserved ioctls. We have customer implementing it internally.
+  * We can't use both numbers to not cause ABI conflict.
+-- 
+1.9.1
+

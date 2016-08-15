@@ -1,0 +1,67 @@
+From 0d731db4f5b90ab39613075a5ded9df1530f2ff1 Mon Sep 17 00:00:00 2001
+From: Janusz Dziedzic <januszx.dziedzic@intel.com>
+Date: Fri, 3 Jun 2016 09:28:00 +0200
+Subject: [PATCH 1/3] usb: gadget: f_mtp improve performance
+
+Set more requests for TX/RX direction.
+For Tx direction lower numbers of interrupts
+in case of large tranfers.
+
+This speed up mtp about 4MB/s.
+
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>wq
+Change-Id: Iaa8b7186dfcd2ff7caed16a85bf9597348fa758f
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-8924
+Reviewed-on: https://android.intel.com:443/513216
+---
+ drivers/usb/gadget/f_mtp.c | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/usb/gadget/f_mtp.c b/drivers/usb/gadget/f_mtp.c
+index 6ca75e8..a105643 100644
+--- a/drivers/usb/gadget/f_mtp.c
++++ b/drivers/usb/gadget/f_mtp.c
+@@ -60,8 +60,8 @@
+ #define STATE_ERROR                 4   /* error from completion routine */
+ 
+ /* number of tx and rx requests to allocate */
+-#define TX_REQ_MAX 4
+-#define RX_REQ_MAX 2
++#define TX_REQ_MAX 8
++#define RX_REQ_MAX 4
+ #define INTR_REQ_MAX 5
+ 
+ /* ID for Microsoft MTP OS String */
+@@ -741,6 +741,7 @@ static void send_file_work(struct work_struct *data)
+ 	int xfer, ret, hdr_size;
+ 	int r = 0;
+ 	int sendZLP = 0;
++	unsigned int req_count = 0;
+ 
+ 	/* read our parameters */
+ 	smp_rmb();
+@@ -810,6 +811,13 @@ static void send_file_work(struct work_struct *data)
+ 		xfer = ret + hdr_size;
+ 		hdr_size = 0;
+ 
++		/* Don't generate interrupt every packet */
++		if ((count > MTP_BULK_TX_BUFFER_SIZE) &&
++		    (req_count % (TX_REQ_MAX/2)))
++			req->no_interrupt = true;
++		else
++			req->no_interrupt = false;
++
+ 		req->length = xfer;
+ 		ret = usb_ep_queue(dev->ep_in, req, GFP_KERNEL);
+ 		if (ret < 0) {
+@@ -820,6 +828,7 @@ static void send_file_work(struct work_struct *data)
+ 		}
+ 
+ 		count -= xfer;
++		req_count++;
+ 
+ 		/* zero this so we don't try to free it on error exit */
+ 		req = 0;
+-- 
+1.9.1
+

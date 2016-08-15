@@ -1,0 +1,78 @@
+From b85a0e38bb9f6a55de9ea6dcb327ba5ef1a0a6b0 Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <felipe.balbi@linux.intel.com>
+Date: Mon, 23 May 2016 11:27:26 +0300
+Subject: [PATCH 14/41] usb: dwc3: gadget: no more tracking endpoint type with
+ its name
+
+I really thought this would be useful, but as it
+turns out, it creates more problems than fixes. The
+amount of times we had to fix this because some
+other commit shuffled things around and ended up
+regressing this tiny little string manupulation...
+
+Might as well remove it, since it has a negligible
+added benefit.
+
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit 7ab373aadbd0463c0f020d368947b05e67a20bd5)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I27d2cd6740b474e7ff8862217b77e8720a400d51
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34814
+Reviewed-on: https://android.intel.com:443/519784
+---
+ drivers/usb/dwc3/gadget.c | 24 +-----------------------
+ 1 file changed, 1 insertion(+), 23 deletions(-)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index fe99788..ff7d66e 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -642,7 +642,7 @@ static int __dwc3_gadget_ep_enable(struct dwc3_ep *dep,
+ 		dwc3_writel(dwc->regs, DWC3_DALEPENA, reg);
+ 
+ 		if (usb_endpoint_xfer_control(desc))
+-			goto out;
++			return 0;
+ 
+ 		/* Initialize the TRB ring */
+ 		dep->trb_dequeue = 0;
+@@ -660,24 +660,6 @@ static int __dwc3_gadget_ep_enable(struct dwc3_ep *dep,
+ 		trb_link->ctrl |= DWC3_TRB_CTRL_HWO;
+ 	}
+ 
+-out:
+-	switch (usb_endpoint_type(desc)) {
+-	case USB_ENDPOINT_XFER_CONTROL:
+-		/* don't change name */
+-		break;
+-	case USB_ENDPOINT_XFER_ISOC:
+-		strlcat(dep->name, "-isoc", sizeof(dep->name));
+-		break;
+-	case USB_ENDPOINT_XFER_BULK:
+-		strlcat(dep->name, "-bulk", sizeof(dep->name));
+-		break;
+-	case USB_ENDPOINT_XFER_INT:
+-		strlcat(dep->name, "-int", sizeof(dep->name));
+-		break;
+-	default:
+-		dev_err(dwc->dev, "invalid endpoint transfer type\n");
+-	}
+-
+ 	return 0;
+ }
+ 
+@@ -735,10 +717,6 @@ static int __dwc3_gadget_ep_disable(struct dwc3_ep *dep)
+ 	dep->type = 0;
+ 	dep->flags = 0;
+ 
+-	snprintf(dep->name, sizeof(dep->name), "ep%d%s",
+-			dep->number >> 1,
+-			(dep->number & 1) ? "in" : "out");
+-
+ 	return 0;
+ }
+ 
+-- 
+1.9.1
+

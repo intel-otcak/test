@@ -1,0 +1,82 @@
+From c22e78f55bd6e301f486f680131b368761ea02e5 Mon Sep 17 00:00:00 2001
+From: Vitaly Kuznetsov <vkuznets@redhat.com>
+Date: Fri, 6 Nov 2015 16:32:58 -0800
+Subject: [PATCH 1/3] [BACKPORT] panic: release stale console lock to always
+ get the logbuf printed out
+
+In some cases we may end up killing the CPU holding the console lock
+while still having valuable data in logbuf. E.g. I'm observing the
+following:
+
+- A crash is happening on one CPU and console_unlock() is being called on
+  some other.
+
+- console_unlock() tries to print out the buffer before releasing the lock
+  and on slow console it takes time.
+
+- in the meanwhile crashing CPU does lots of printk()-s with valuable data
+  (which go to the logbuf) and sends IPIs to all other CPUs.
+
+- console_unlock() finishes printing previous chunk and enables interrupts
+  before trying to print out the rest, the CPU catches the IPI and never
+  releases console lock.
+
+This is not the only possible case: in VT/fb subsystems we have many other
+console_lock()/console_unlock() users.  Non-masked interrupts (or
+receiving NMI in case of extreme slowness) will have the same result.
+Getting the whole console buffer printed out on crash should be top
+priority.
+
+[akpm@linux-foundation.org: tweak comment text]
+Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
+Cc: HATAYAMA Daisuke <d.hatayama@jp.fujitsu.com>
+Cc: Masami Hiramatsu <masami.hiramatsu.pt@hitachi.com>
+Cc: Jiri Kosina <jkosina@suse.cz>
+Cc: Baoquan He <bhe@redhat.com>
+Cc: Prarit Bhargava <prarit@redhat.com>
+Cc: Xie XiuQi <xiexiuqi@huawei.com>
+Cc: Seth Jennings <sjenning@redhat.com>
+Cc: "K. Y. Srinivasan" <kys@microsoft.com>
+Cc: Jan Kara <jack@suse.cz>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+
+Change-Id: Ia3969ca9b1a8a0d355aaf2babccffe798aecb071
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-33203
+Signed-off-by: Traian Schiau <traianx.schiau@intel.com>
+Reviewed-on: https://android.intel.com:443/511905
+---
+ kernel/panic.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/kernel/panic.c b/kernel/panic.c
+index 7b8d5d2..a6fff26 100644
+--- a/kernel/panic.c
++++ b/kernel/panic.c
+@@ -23,6 +23,7 @@
+ #include <linux/sysrq.h>
+ #include <linux/init.h>
+ #include <linux/nmi.h>
++#include <linux/console.h>
+ 
+ #define PANIC_TIMER_STEP 100
+ #define PANIC_BLINK_SPD 18
+@@ -136,6 +137,15 @@ void panic(const char *fmt, ...)
+ 
+ 	bust_spinlocks(0);
+ 
++	/*
++	 * We may have ended up stopping the CPU holding the lock (in
++	 * smp_send_stop()) while still having some valuable data in the console
++	 * buffer.  Try to acquire the lock then release it regardless of the
++	 * result.  The release will also print the buffers out.
++	 */
++	console_trylock();
++	console_unlock();
++
+ 	if (!panic_blink)
+ 		panic_blink = no_blink;
+ 
+-- 
+1.9.1
+

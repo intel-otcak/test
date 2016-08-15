@@ -1,0 +1,40 @@
+From 2f80c4abf40c5ddb4b0d3346cb20d0c1906c3709 Mon Sep 17 00:00:00 2001
+From: Miroslaw Swiader <miroslaw.swiader@intel.com>
+Date: Fri, 3 Jun 2016 17:34:44 +0200
+Subject: [PATCH 05/11] usb: dwc3: gadged: f_fs: Parsing compat ID OS
+ descriptor
+
+The patch providing fix for enumaration in SS mode for devices
+with defined Extended compat ID OS feature descriptor.
+
+Devices in SS mode are not able to enumerate due to parsing of
+Extended compat ID OS feature descriptor fail.
+According to description of MS Extended compat ID OS feature descriptor
+for Function section first Reserved field should be set to 1 while
+driver expect 0.
+
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34705
+Change-Id: I8b5df99805a9266a128960f81be7d249208c60e3
+Signed-off-by: Miroslaw Swiader <miroslaw.swiader@intel.com>
+Signed-off-by: Krzysztof Adamski <krzysztofx.adamski@intel.com>
+Reviewed-on: https://android.intel.com:443/514970
+---
+ drivers/usb/gadget/f_fs.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/usb/gadget/f_fs.c b/drivers/usb/gadget/f_fs.c
+index 9b396ea..e82ec12 100644
+--- a/drivers/usb/gadget/f_fs.c
++++ b/drivers/usb/gadget/f_fs.c
+@@ -1747,7 +1747,7 @@ static int __ffs_data_do_os_desc(enum ffs_os_desc_type type,
+ 
+ 		if (len < sizeof(*d) ||
+ 		    d->bFirstInterfaceNumber >= ffs->interfaces_count ||
+-		    d->Reserved1)
++		    d->Reserved1 != 1)
+ 			return -EINVAL;
+ 		for (i = 0; i < ARRAY_SIZE(d->Reserved2); ++i)
+ 			if (d->Reserved2[i])
+-- 
+1.9.1
+

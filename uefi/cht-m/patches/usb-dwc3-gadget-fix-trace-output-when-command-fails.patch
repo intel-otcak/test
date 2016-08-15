@@ -1,0 +1,44 @@
+From 37670f129925cca7ad3416bdc25beb901220ce25 Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <felipe.balbi@linux.intel.com>
+Date: Mon, 23 May 2016 13:50:29 +0300
+Subject: [PATCH 16/41] usb: dwc3: gadget: fix trace output when command fails
+
+We don't need the extra %s when command fails.
+Let's remove it
+
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit ba1598410eff646e10be4e42d773e5bdc511d898)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I40b0d3eb3f8a690dc28a2db2816073b315456493
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34814
+Reviewed-on: https://android.intel.com:443/519786
+---
+ drivers/usb/dwc3/gadget.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index c7b0dce..ae38761 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -373,7 +373,7 @@ int dwc3_send_gadget_ep_cmd(struct dwc3_ep *dep, unsigned cmd,
+ 				ret = 0;
+ 				break;
+ 			case DEPEVT_TRANSFER_NO_RESOURCE:
+-				dwc3_trace(trace_dwc3_gadget, "%s: no resource available");
++				dwc3_trace(trace_dwc3_gadget, "no resource available");
+ 				ret = -EINVAL;
+ 				break;
+ 			case DEPEVT_TRANSFER_BUS_EXPIRY:
+@@ -388,7 +388,7 @@ int dwc3_send_gadget_ep_cmd(struct dwc3_ep *dep, unsigned cmd,
+ 				 * give a hint to the gadget driver that this is
+ 				 * the case by returning -EAGAIN.
+ 				 */
+-				dwc3_trace(trace_dwc3_gadget, "%s: bus expiry");
++				dwc3_trace(trace_dwc3_gadget, "bus expiry");
+ 				ret = -EAGAIN;
+ 				break;
+ 			default:
+-- 
+1.9.1
+

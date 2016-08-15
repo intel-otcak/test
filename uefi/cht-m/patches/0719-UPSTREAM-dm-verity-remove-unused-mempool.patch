@@ -1,0 +1,66 @@
+From 256003752d895ce60e19b168f1e6d11657416546 Mon Sep 17 00:00:00 2001
+From: Sami Tolvanen <samitolvanen@google.com>
+Date: Mon, 29 Jun 2015 14:14:00 +0100
+Subject: [PATCH 719/769] UPSTREAM: dm verity: remove unused mempool
+
+Since commit 003b5c571 ("block: Convert drivers to immutable biovecs"),
+vec_mempool in struct dm_verity is no longer used.  Remove it and
+related definitions.
+
+Change-Id: Ic6e65db8b75494eb1cd07d7ec6a5a917edfddc3d
+Signed-off-by: Sami Tolvanen <samitolvanen@google.com>
+Signed-off-by: Mike Snitzer <snitzer@redhat.com>
+---
+ drivers/md/dm-verity.c | 15 ---------------
+ 1 file changed, 15 deletions(-)
+
+diff --git a/drivers/md/dm-verity.c b/drivers/md/dm-verity.c
+index 66616db..1a50b58 100644
+--- a/drivers/md/dm-verity.c
++++ b/drivers/md/dm-verity.c
+@@ -26,8 +26,6 @@
+ #define DM_VERITY_ENV_LENGTH		42
+ #define DM_VERITY_ENV_VAR_NAME		"DM_VERITY_ERR_BLOCK_NR"
+ 
+-#define DM_VERITY_IO_VEC_INLINE		16
+-#define DM_VERITY_MEMPOOL_SIZE		4
+ #define DM_VERITY_DEFAULT_PREFETCH_SIZE	262144
+ 
+ #define DM_VERITY_MAX_LEVELS		63
+@@ -76,8 +74,6 @@ struct dm_verity {
+ 	enum verity_mode mode;	/* mode for handling verification errors */
+ 	unsigned corrupted_errs;/* Number of errors for corrupted blocks */
+ 
+-	mempool_t *vec_mempool;	/* mempool of bio vector */
+-
+ 	struct workqueue_struct *verify_wq;
+ 
+ 	/* starting blocks for each tree level. 0 is the lowest level. */
+@@ -691,9 +687,6 @@ static void verity_dtr(struct dm_target *ti)
+ 	if (v->verify_wq)
+ 		destroy_workqueue(v->verify_wq);
+ 
+-	if (v->vec_mempool)
+-		mempool_destroy(v->vec_mempool);
+-
+ 	if (v->bufio)
+ 		dm_bufio_client_destroy(v->bufio);
+ 
+@@ -962,14 +955,6 @@ static int verity_ctr(struct dm_target *ti, unsigned argc, char **argv)
+ 
+ 	ti->per_bio_data_size = roundup(sizeof(struct dm_verity_io) + v->shash_descsize + v->digest_size * 2, __alignof__(struct dm_verity_io));
+ 
+-	v->vec_mempool = mempool_create_kmalloc_pool(DM_VERITY_MEMPOOL_SIZE,
+-					BIO_MAX_PAGES * sizeof(struct bio_vec));
+-	if (!v->vec_mempool) {
+-		ti->error = "Cannot allocate vector mempool";
+-		r = -ENOMEM;
+-		goto bad;
+-	}
+-
+ 	/* WQ_UNBOUND greatly improves performance when running on ramdisk */
+ 	v->verify_wq = alloc_workqueue("kverityd", WQ_CPU_INTENSIVE | WQ_MEM_RECLAIM | WQ_UNBOUND, num_online_cpus());
+ 	if (!v->verify_wq) {
+-- 
+1.9.1
+

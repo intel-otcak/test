@@ -1,0 +1,57 @@
+From 4ead7e498356aec00c6d40fa64b4f226b0cd530c Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <felipe.balbi@linux.intel.com>
+Date: Wed, 13 Apr 2016 16:44:39 +0300
+Subject: [PATCH 13/41] usb: dwc3: gadget: add a per-endpoint request queue
+ lock
+
+This will allow us to process several endpoints at a
+time by making sure that we lock only shared
+resources.
+
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit 74674cbf858ff6a83c3f06f4ab0ffa5d3c91bf0b)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I439d163aad4d47e46d8483bb534985bf570b3986
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34814
+Reviewed-on: https://android.intel.com:443/519783
+---
+ drivers/usb/dwc3/core.h   | 2 ++
+ drivers/usb/dwc3/gadget.c | 1 +
+ 2 files changed, 3 insertions(+)
+
+diff --git a/drivers/usb/dwc3/core.h b/drivers/usb/dwc3/core.h
+index 828646f..57d5b76 100644
+--- a/drivers/usb/dwc3/core.h
++++ b/drivers/usb/dwc3/core.h
+@@ -423,6 +423,7 @@ struct dwc3_event_buffer {
+  * @endpoint: usb endpoint
+  * @pending_list: list of pending requests for this endpoint
+  * @started_list: list of started requests on this endpoint
++ * @lock: spinlock for endpoint request queue traversal
+  * @regs: pointer to first endpoint register
+  * @trb_pool: array of transaction buffers
+  * @trb_pool_dma: dma address of @trb_pool
+@@ -445,6 +446,7 @@ struct dwc3_ep {
+ 	struct list_head	pending_list;
+ 	struct list_head	started_list;
+ 
++	spinlock_t		lock;
+ 	void __iomem		*regs;
+ 
+ 	struct dwc3_trb		*trb_pool;
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index 2cb8e18..fe99788 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -2045,6 +2045,7 @@ static int dwc3_gadget_init_hw_endpoints(struct dwc3 *dwc,
+ 				(epnum & 1) ? "in" : "out");
+ 
+ 		dep->endpoint.name = dep->name;
++		spin_lock_init(&dep->lock);
+ 
+ 		dwc3_trace(trace_dwc3_gadget, "initializing %s", dep->name);
+ 
+-- 
+1.9.1
+

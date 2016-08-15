@@ -1,0 +1,37 @@
+From a453baceb797e1f469fad0faa54526718fdf5a0f Mon Sep 17 00:00:00 2001
+From: Amit Pundir <amit.pundir@linaro.org>
+Date: Thu, 28 Jan 2016 14:08:31 +0530
+Subject: [PATCH 690/769] Revert "net: wireless: Add CONFIG_WIFI_CONTROL_FUNC
+ option"
+
+This reverts commit e9990dac1f714e763f54ca12fabda83a23649c76.
+
+WIFI_CONTROL_FUNC config is not used anywhere in android-3.10+
+kernels. Its usage can be last tracked to BCMDHD wireless driver
+in android-3.4 kernel.
+
+Change-Id: I8092bf10b70dd84a9bb3aade4aca80891742d504
+Signed-off-by: Amit Pundir <amit.pundir@linaro.org>
+---
+ drivers/net/wireless/Kconfig | 5 -----
+ 1 file changed, 5 deletions(-)
+
+diff --git a/drivers/net/wireless/Kconfig b/drivers/net/wireless/Kconfig
+index eba19fe..200020e 100644
+--- a/drivers/net/wireless/Kconfig
++++ b/drivers/net/wireless/Kconfig
+@@ -264,11 +264,6 @@ config MWL8K
+ 	  To compile this driver as a module, choose M here: the module
+ 	  will be called mwl8k.  If unsure, say N.
+ 
+-config WIFI_CONTROL_FUNC
+-	bool "Enable WiFi control function abstraction"
+-	help
+-	  Enables Power/Reset/Carddetect function abstraction
+-
+ source "drivers/net/wireless/ath/Kconfig"
+ source "drivers/net/wireless/b43/Kconfig"
+ source "drivers/net/wireless/b43legacy/Kconfig"
+-- 
+1.9.1
+

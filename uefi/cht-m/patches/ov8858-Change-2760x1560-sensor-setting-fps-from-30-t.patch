@@ -1,0 +1,50 @@
+From 2a089fa22d55d2442526ffd13cfcc924dab38a66 Mon Sep 17 00:00:00 2001
+From: haiqiang yao <haiqiangx.yao@intel.com>
+Date: Fri, 25 Mar 2016 15:18:03 +0800
+Subject: [PATCH 08/10] ov8858:Change 2760x1560 sensor setting fps from 30 to
+ 24
+
+Duo to memory bandwidth limit, the 2760x1560 sensor setting can't
+hit 30 fps in video mode and only can hit 25.5 in BTNS.
+
+the patch will change 2760x1560 sensor setting fps from 30 to 24.
+
+Change-Id: I28c12678bcb7fac662ffe119192c86615c7c5951
+Original-Tracked_On: #H1504198943
+Signed-off-by: haiqiang yao <haiqiangx.yao@intel.com>
+Reviewed-on: https://icggerrit.ir.intel.com/110182
+Approver: Bin B Han <bin.b.han@intel.com>
+Reviewed-by: Bin B Han <bin.b.han@intel.com>
+Build: Dessert M BTNS (SC)
+Build: Dessert M BXT RVP (SC)
+Validation-Android: Wei Tao <wei.tao@intel.com>
+Reviewed-by: DaleiX Liu <daleix.liu@intel.com>
+Build: Dessert M CHT FFD (SC)
+Integrator: WeiX Meng <weix.meng@intel.com>
+Reviewed-by: WeiX Meng <weix.meng@intel.com>
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-26488
+Signed-off-by: Tao Wei <wei.tao@intel.com>
+Reviewed-on: https://android.intel.com:443/487154
+---
+ drivers/external_drivers/camera/drivers/media/i2c/ov8858_btns.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/external_drivers/camera/drivers/media/i2c/ov8858_btns.h b/drivers/external_drivers/camera/drivers/media/i2c/ov8858_btns.h
+index 81297d8..7f9dff4 100644
+--- a/drivers/external_drivers/camera/drivers/media/i2c/ov8858_btns.h
++++ b/drivers/external_drivers/camera/drivers/media/i2c/ov8858_btns.h
+@@ -1445,9 +1445,9 @@ static struct ov8858_resolution ov8858_res_video[] = {
+ 		.skip_frames = 1,
+ 		.fps_options = {
+ 			{
+-				.fps = 30,
++				.fps = 24,
+ 				.pixels_per_line = 3872,
+-				.lines_per_frame = 2478,
++				.lines_per_frame = 3096,
+ 			},
+ 			{
+ 			}
+-- 
+1.9.1
+

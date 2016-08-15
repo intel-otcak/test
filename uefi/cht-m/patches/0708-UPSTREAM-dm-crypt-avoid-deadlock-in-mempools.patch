@@ -1,0 +1,125 @@
+From 443cc1af6587f43e4947b949f00e27c5ff31eca3 Mon Sep 17 00:00:00 2001
+From: Mikulas Patocka <mpatocka@redhat.com>
+Date: Fri, 13 Feb 2015 08:24:41 -0500
+Subject: [PATCH 708/769] UPSTREAM: dm crypt: avoid deadlock in mempools
+
+(cherry pick from commit 7145c241a1bf2841952c3e297c4080b357b3e52d)
+
+Fix a theoretical deadlock introduced in the previous commit ("dm crypt:
+don't allocate pages for a partial request").
+
+The function crypt_alloc_buffer may be called concurrently.  If we allocate
+from the mempool concurrently, there is a possibility of deadlock.  For
+example, if we have mempool of 256 pages, two processes, each wanting
+256, pages allocate from the mempool concurrently, it may deadlock in a
+situation where both processes have allocated 128 pages and the mempool
+is exhausted.
+
+To avoid such a scenario we allocate the pages under a mutex.  In order
+to not degrade performance with excessive locking, we try non-blocking
+allocations without a mutex first and if that fails, we fallback to a
+blocking allocations with a mutex.
+
+Signed-off-by: Mikulas Patocka <mpatocka@redhat.com>
+Signed-off-by: Mike Snitzer <snitzer@redhat.com>
+Bug: 25392275
+Change-Id: I357615de0d1e63fdf1460ff674eef763305b4b53
+---
+ drivers/md/dm-crypt.c | 41 ++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 36 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/md/dm-crypt.c b/drivers/md/dm-crypt.c
+index f3b58a3..4db3075 100644
+--- a/drivers/md/dm-crypt.c
++++ b/drivers/md/dm-crypt.c
+@@ -124,6 +124,7 @@ struct crypt_config {
+ 	mempool_t *req_pool;
+ 	mempool_t *page_pool;
+ 	struct bio_set *bs;
++	struct mutex bio_alloc_lock;
+ 
+ 	struct workqueue_struct *io_queue;
+ 	struct workqueue_struct *crypt_queue;
+@@ -955,27 +956,51 @@ static void crypt_free_buffer_pages(struct crypt_config *cc, struct bio *clone);
+ /*
+  * Generate a new unfragmented bio with the given size
+  * This should never violate the device limitations
++ *
++ * This function may be called concurrently. If we allocate from the mempool
++ * concurrently, there is a possibility of deadlock. For example, if we have
++ * mempool of 256 pages, two processes, each wanting 256, pages allocate from
++ * the mempool concurrently, it may deadlock in a situation where both processes
++ * have allocated 128 pages and the mempool is exhausted.
++ *
++ * In order to avoid this scenario we allocate the pages under a mutex.
++ *
++ * In order to not degrade performance with excessive locking, we try
++ * non-blocking allocations without a mutex first but on failure we fallback
++ * to blocking allocations with a mutex.
+  */
+ static struct bio *crypt_alloc_buffer(struct dm_crypt_io *io, unsigned size)
+ {
+ 	struct crypt_config *cc = io->cc;
+ 	struct bio *clone;
+ 	unsigned int nr_iovecs = (size + PAGE_SIZE - 1) >> PAGE_SHIFT;
+-	gfp_t gfp_mask = GFP_NOIO | __GFP_HIGHMEM;
+-	unsigned i, len;
++	gfp_t gfp_mask = GFP_NOWAIT | __GFP_HIGHMEM;
++	unsigned i, len, remaining_size;
+ 	struct page *page;
+ 	struct bio_vec *bvec;
+ 
++retry:
++	if (unlikely(gfp_mask & __GFP_WAIT))
++		mutex_lock(&cc->bio_alloc_lock);
++
+ 	clone = bio_alloc_bioset(GFP_NOIO, nr_iovecs, cc->bs);
+ 	if (!clone)
+-		return NULL;
++		goto return_clone;
+ 
+ 	clone_init(io, clone);
+ 
++	remaining_size = size;
++
+ 	for (i = 0; i < nr_iovecs; i++) {
+ 		page = mempool_alloc(cc->page_pool, gfp_mask);
++		if (!page) {
++			crypt_free_buffer_pages(cc, clone);
++			bio_put(clone);
++			gfp_mask |= __GFP_WAIT;
++			goto retry;
++		}
+ 
+-		len = (size > PAGE_SIZE) ? PAGE_SIZE : size;
++		len = (remaining_size > PAGE_SIZE) ? PAGE_SIZE : remaining_size;
+ 
+ 		bvec = &clone->bi_io_vec[clone->bi_vcnt++];
+ 		bvec->bv_page = page;
+@@ -984,9 +1009,13 @@ static struct bio *crypt_alloc_buffer(struct dm_crypt_io *io, unsigned size)
+ 
+ 		clone->bi_iter.bi_size += len;
+ 
+-		size -= len;
++		remaining_size -= len;
+ 	}
+ 
++return_clone:
++	if (unlikely(gfp_mask & __GFP_WAIT))
++		mutex_unlock(&cc->bio_alloc_lock);
++
+ 	return clone;
+ }
+ 
+@@ -1685,6 +1714,8 @@ static int crypt_ctr(struct dm_target *ti, unsigned int argc, char **argv)
+ 		goto bad;
+ 	}
+ 
++	mutex_init(&cc->bio_alloc_lock);
++
+ 	ret = -EINVAL;
+ 	if (sscanf(argv[2], "%llu%c", &tmpll, &dummy) != 1) {
+ 		ti->error = "Invalid iv_offset sector";
+-- 
+1.9.1
+

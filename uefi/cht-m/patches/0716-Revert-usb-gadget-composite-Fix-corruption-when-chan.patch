@@ -1,0 +1,63 @@
+From e792789656f10fea38851dac498bd22c614a34bb Mon Sep 17 00:00:00 2001
+From: Amit Pundir <amit.pundir@linaro.org>
+Date: Mon, 8 Feb 2016 11:54:50 +0530
+Subject: [PATCH 716/769] Revert "usb: gadget: composite: Fix corruption when
+ changing configuration"
+
+This reverts commit f5b96a704d06bc94b28a469c687a4ff14a6e630e.
+
+We do not need this fix with Android ConfigFS gadgets.
+
+Change-Id: I7dffb884a49ecb2f5d619150edfa3e51808ef8cc
+Signed-off-by: Amit Pundir <amit.pundir@linaro.org>
+---
+ drivers/usb/gadget/composite.c | 10 ++++------
+ 1 file changed, 4 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/usb/gadget/composite.c b/drivers/usb/gadget/composite.c
+index e916949..d742bed 100644
+--- a/drivers/usb/gadget/composite.c
++++ b/drivers/usb/gadget/composite.c
+@@ -812,7 +812,7 @@ done:
+ }
+ EXPORT_SYMBOL_GPL(usb_add_config);
+ 
+-static void unbind_config(struct usb_composite_dev *cdev,
++static void remove_config(struct usb_composite_dev *cdev,
+ 			      struct usb_configuration *config)
+ {
+ 	while (!list_empty(&config->functions)) {
+@@ -827,6 +827,7 @@ static void unbind_config(struct usb_composite_dev *cdev,
+ 			/* may free memory for "f" */
+ 		}
+ 	}
++	list_del(&config->list);
+ 	if (config->unbind) {
+ 		DBG(cdev, "unbind config '%s'/%p\n", config->label, config);
+ 		config->unbind(config);
+@@ -853,11 +854,9 @@ void usb_remove_config(struct usb_composite_dev *cdev,
+ 	if (cdev->config == config)
+ 		reset_config(cdev);
+ 
+-	list_del(&config->list);
+-
+ 	spin_unlock_irqrestore(&cdev->lock, flags);
+ 
+-	unbind_config(cdev, config);
++	remove_config(cdev, config);
+ }
+ 
+ /*-------------------------------------------------------------------------*/
+@@ -1538,8 +1537,7 @@ static void __composite_unbind(struct usb_gadget *gadget, bool unbind_driver)
+ 		struct usb_configuration	*c;
+ 		c = list_first_entry(&cdev->configs,
+ 				struct usb_configuration, list);
+-		list_del(&c->list);
+-		unbind_config(cdev, c);
++		remove_config(cdev, c);
+ 	}
+ 	if (cdev->driver->unbind && unbind_driver)
+ 		cdev->driver->unbind(cdev);
+-- 
+1.9.1
+

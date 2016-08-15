@@ -1,0 +1,36 @@
+From ba5460fdee449e2044d7cc90b00b23c8a5032513 Mon Sep 17 00:00:00 2001
+From: thakur2x <santosh.krx.thakur@intel.com>
+Date: Wed, 13 Jul 2016 17:50:23 +0530
+Subject: [PATCH 2/3] [KW] Povided NULL pointer checking
+
+Change-Id: I05bdc5d71a8dabefb66a7d3ede7aece87ec48c3b
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-35508
+Signed-off-by: thakur2x <santosh.krx.thakur@intel.com>
+Reviewed-on: https://android.intel.com:443/523092
+---
+ sound/soc/soc-fw.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/sound/soc/soc-fw.c b/sound/soc/soc-fw.c
+index 57802f8..4e58e38 100644
+--- a/sound/soc/soc-fw.c
++++ b/sound/soc/soc-fw.c
+@@ -1235,10 +1235,11 @@ err_se:
+ 	kfree(kc);
+ 
+ 	/* free values and texts */
+-	kfree(se->dvalues);
+-	for (i = 0; i < ec->items; i++)
+-		kfree(se->dtexts[i]);
+-
++	if (se) {
++		kfree(se->dvalues);
++		for (i = 0; i < ec->items; i++)
++			kfree(se->dtexts[i]);
++	}
+ 	kfree(se);
+ 
+ 	return NULL;
+-- 
+1.9.1
+

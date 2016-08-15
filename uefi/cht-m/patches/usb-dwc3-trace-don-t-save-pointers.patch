@@ -1,0 +1,59 @@
+From ebbba4f76d10182055d4e4b8f2011f4d7924f2ca Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <balbi@ti.com>
+Date: Thu, 20 Nov 2014 10:12:32 -0600
+Subject: [PATCH 07/78] usb: dwc3: trace: don't save pointers
+
+There was another instance where we were
+holding pointers which could be long gone.
+
+Fix that by caching only values pointed to
+by such pointer.
+
+Because no crash has been observed, this patch
+will be sent on v3.19 merge window, instead of
+-rc.
+
+Signed-off-by: Felipe Balbi <balbi@ti.com>
+(cherry picked from commit a4722fd3f2d3590af5200890b61dbbdf87480abb)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: If28f5eb2b4f2b87ccdc82eb2f6ad41276c1c44ea
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-29845
+Reviewed-on: https://android.intel.com:443/508183
+---
+ drivers/usb/dwc3/trace.h | 12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/usb/dwc3/trace.h b/drivers/usb/dwc3/trace.h
+index 7a9d780..9fc20b3 100644
+--- a/drivers/usb/dwc3/trace.h
++++ b/drivers/usb/dwc3/trace.h
+@@ -175,17 +175,21 @@ DECLARE_EVENT_CLASS(dwc3_log_gadget_ep_cmd,
+ 	TP_STRUCT__entry(
+ 		__dynamic_array(char, name, DWC3_MSG_MAX)
+ 		__field(unsigned int, cmd)
+-		__field(struct dwc3_gadget_ep_cmd_params *, params)
++		__field(u32, param0)
++		__field(u32, param1)
++		__field(u32, param2)
+ 	),
+ 	TP_fast_assign(
+ 		snprintf(__get_str(name), DWC3_MSG_MAX, "%s", dep->name);
+ 		__entry->cmd = cmd;
+-		__entry->params = params;
++		__entry->param0 = params->param0;
++		__entry->param1 = params->param1;
++		__entry->param2 = params->param2;
+ 	),
+ 	TP_printk("%s: cmd '%s' [%d] params %08x %08x %08x",
+ 		__get_str(name), dwc3_gadget_ep_cmd_string(__entry->cmd),
+-		__entry->cmd, __entry->params->param0,
+-		__entry->params->param1, __entry->params->param2
++		__entry->cmd, __entry->param0,
++		__entry->param1, __entry->param2
+ 	)
+ );
+ 
+-- 
+1.9.1
+

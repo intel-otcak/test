@@ -1,0 +1,90 @@
+From 318e6e3a6667d898f9ceaf64ce1ce856e0ebd8e7 Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <felipe.balbi@linux.intel.com>
+Date: Mon, 4 Apr 2016 09:11:51 +0300
+Subject: [PATCH 54/78] usb: dwc3: gadget: combine return points into a single
+ one
+
+dwc3_send_gadget_ep_cmd() had three return
+points. That becomes a pain to track when we need to
+debug something or if we need to add more code
+before returning.
+
+Let's combine all three return points into a single
+one just by introducing a local 'ret' variable.
+
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit c0ca324d09a041ab56be1aaeb5a7cc64c47f877b)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Conflicts:
+	drivers/usb/dwc3/gadget.c
+
+Change-Id: Icff42e206b8bc785e19e344b31b367b6e8087992
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-19337
+Reviewed-on: https://android.intel.com:443/511179
+---
+ drivers/usb/dwc3/gadget.c | 24 +++++++++++++++++-------
+ 1 file changed, 17 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index b79d616..ea74b88 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -300,6 +300,7 @@ int dwc3_send_gadget_ep_cmd(struct dwc3 *dwc, unsigned ep,
+ 	u32			timeout = 500;
+ 	u32			reg;
+ 	u32			phycfg_val = 0;
++	int			ret = -EINVAL;
+ 
+ 	trace_dwc3_gadget_ep_cmd(dep, cmd, params);
+ 
+@@ -324,7 +325,7 @@ int dwc3_send_gadget_ep_cmd(struct dwc3 *dwc, unsigned ep,
+ 				dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(0),
+ 				phycfg_val);
+ 			if (DWC3_DEPCMD_STATUS(reg))
+-				return -EINVAL;
++				break;
+ 
+ 			/* SW issues START TRANSFER command to isochronous ep
+ 			* with future frame interval. If future interval time
+@@ -332,10 +333,13 @@ int dwc3_send_gadget_ep_cmd(struct dwc3 *dwc, unsigned ep,
+ 			* will respond with an error(bit13 in Command complete
+ 			* event. Hence return error in this case.
+ 			*/
+-			if ((reg & 0x2000) && ((cmd & 0xF) == DWC3_DEPCMD_STARTTRANSFER))
+-				return -EAGAIN;
+-			
+-			return 0;
++			if ((reg & 0x2000) && ((cmd & 0xF) == DWC3_DEPCMD_STARTTRANSFER)) {
++				ret = -EAGAIN;
++				break;
++			}
++
++			ret = 0;
++			break;
+ 		}
+ 
+ 		/*
+@@ -343,11 +347,17 @@ int dwc3_send_gadget_ep_cmd(struct dwc3 *dwc, unsigned ep,
+ 		 * interrupt context.
+ 		 */
+ 		timeout--;
+-		if (!timeout)
+-			return -ETIMEDOUT;
++		if (!timeout) {
++			dwc3_trace(trace_dwc3_gadget,
++					"Command Timed Out");
++			ret = -ETIMEDOUT;
++			break;
++		}
+ 
+ 		udelay(1);
+ 	} while (1);
++
++	return ret;
+ }
+ 
+ static dma_addr_t dwc3_trb_dma_offset(struct dwc3_ep *dep,
+-- 
+1.9.1
+

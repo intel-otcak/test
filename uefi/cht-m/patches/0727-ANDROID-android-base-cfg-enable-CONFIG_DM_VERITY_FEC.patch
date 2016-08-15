@@ -1,0 +1,28 @@
+From ae70f6ce5e10192fa85c9f8b568b88c4ef8b8102 Mon Sep 17 00:00:00 2001
+From: Sami Tolvanen <samitolvanen@google.com>
+Date: Wed, 16 Dec 2015 16:23:49 +0000
+Subject: [PATCH 727/769] ANDROID: android: base-cfg: enable
+ CONFIG_DM_VERITY_FEC
+
+Bug: 21893453
+Change-Id: Idd0dfe4e3e527df2eff2f0d734effc40dce294c7
+Signed-off-by: Sami Tolvanen <samitolvanen@google.com>
+---
+ android/configs/android-base.cfg | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/android/configs/android-base.cfg b/android/configs/android-base.cfg
+index 8bcd75d..f10ed74 100644
+--- a/android/configs/android-base.cfg
++++ b/android/configs/android-base.cfg
+@@ -21,6 +21,7 @@ CONFIG_CGROUP_SCHED=y
+ CONFIG_CP15_BARRIER_EMULATION=y
+ CONFIG_DM_CRYPT=y
+ CONFIG_DM_VERITY=y
++CONFIG_DM_VERITY_FEC=y
+ CONFIG_EMBEDDED=y
+ CONFIG_FB=y
+ CONFIG_HIGH_RES_TIMERS=y
+-- 
+1.9.1
+

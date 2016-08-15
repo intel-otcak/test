@@ -1,0 +1,27 @@
+From 596895715713779a7b154810efd7f52d1762e677 Mon Sep 17 00:00:00 2001
+From: Dave Lin <dave.lin@intel.com>
+Date: Wed, 20 Apr 2016 16:31:32 +0800
+Subject: [PATCH 1/1] misc: REVERTME: make the file mode match the git source
+
+This patch changes the mode from 644 to 755 in order to match
+the git source. However, the proper mode of Makefile and header
+is 644, so this patch should be reverted finally.
+
+Change-Id: Iaa339cbf45edf645aff75b69db4136165544488a
+Signed-off-by: Dave Lin <dave.lin@intel.com>
+---
+ drivers/misc/Makefile     | 0
+ include/linux/lbf_ldisc.h | 0
+ 2 files changed, 0 insertions(+), 0 deletions(-)
+ mode change 100644 => 100755 drivers/misc/Makefile
+ mode change 100644 => 100755 include/linux/lbf_ldisc.h
+
+diff --git a/drivers/misc/Makefile b/drivers/misc/Makefile
+old mode 100644
+new mode 100755
+diff --git a/include/linux/lbf_ldisc.h b/include/linux/lbf_ldisc.h
+old mode 100644
+new mode 100755
+-- 
+1.9.1
+

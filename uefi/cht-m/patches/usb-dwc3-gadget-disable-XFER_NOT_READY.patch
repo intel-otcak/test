@@ -1,0 +1,39 @@
+From 1f33ebb78c2cd0c4efb968795360496e5400e9bf Mon Sep 17 00:00:00 2001
+From: Felipe Balbi <felipe.balbi@linux.intel.com>
+Date: Mon, 30 May 2016 13:40:00 +0300
+Subject: [PATCH 34/41] usb: dwc3: gadget: disable XFER_NOT_READY
+
+We don't need this IRQ anymore for interrupt or bulk
+endpoints.
+
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit 13fa2e69b1dda31bddb11fe61f250b9415885ead)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I7ae29e11b848283ed2bd187a43ddc2b328852491
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34814
+Reviewed-on: https://android.intel.com:443/519804
+---
+ drivers/usb/dwc3/gadget.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index 8e2b81e..6cb69c2 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -559,8 +559,10 @@ static int dwc3_gadget_set_ep_config(struct dwc3 *dwc, struct dwc3_ep *dep,
+ 		params.param2 |= dep->saved_state;
+ 	}
+ 
+-	params.param1 = DWC3_DEPCFG_XFER_COMPLETE_EN
+-		| DWC3_DEPCFG_XFER_NOT_READY_EN;
++	params.param1 = DWC3_DEPCFG_XFER_COMPLETE_EN;
++
++	if (dep->number <= 1 || usb_endpoint_xfer_isoc(desc))
++		params.param1 |= DWC3_DEPCFG_XFER_NOT_READY_EN;
+ 
+ 	if (usb_ss_max_streams(comp_desc) && usb_endpoint_xfer_bulk(desc)) {
+ 		params.param1 |= DWC3_DEPCFG_STREAM_CAPABLE
+-- 
+1.9.1
+

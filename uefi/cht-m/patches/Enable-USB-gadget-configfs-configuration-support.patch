@@ -1,0 +1,77 @@
+From 3be1f7df517fef689a359305e26b635baf339ec1 Mon Sep 17 00:00:00 2001
+From: Krzysztof Adamski <krzysztofx.adamski@intel.com>
+Date: Thu, 19 May 2016 08:09:19 +0200
+Subject: [PATCH 09/11] Enable USB gadget configfs configuration support
+
+This patch changes the kernel USB gadget configuration mechanism from
+old g_android to new (used by mainline kernel) configfs based one.  This
+is required by Google in N release. The requirements are specified in
+AREQ-17670.
+
+Note that userspace changes are needed for this to work. See OAM-32672
+for more details.
+
+Change-Id: Ie9dae4928f8880e223b31cc343949db79a51c4fe
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34018
+Signed-off-by: Krzysztof Adamski <krzysztofx.adamski@intel.com>
+Reviewed-on: https://android.intel.com:443/514022
+---
+ arch/x86/configs/x86_64_defconfig | 31 ++++++++++++++++++++++++++++---
+ 1 file changed, 28 insertions(+), 3 deletions(-)
+
+diff --git a/arch/x86/configs/x86_64_defconfig b/arch/x86/configs/x86_64_defconfig
+index 166fc4d..d8468d4 100644
+--- a/arch/x86/configs/x86_64_defconfig
++++ b/arch/x86/configs/x86_64_defconfig
+@@ -3161,11 +3161,37 @@ CONFIG_USB_GADGET_STORAGE_NUM_BUFFERS=2
+ # CONFIG_USB_DUMMY_HCD is not set
+ CONFIG_USB_LIBCOMPOSITE=y
+ CONFIG_USB_F_ACM=y
++CONFIG_USB_F_SS_LB=y
+ CONFIG_USB_U_SERIAL=y
++CONFIG_USB_U_ETHER=y
++CONFIG_USB_F_SERIAL=y
++CONFIG_USB_F_OBEX=y
++CONFIG_USB_F_NCM=y
++CONFIG_USB_F_ECM=y
++CONFIG_USB_F_EEM=y
++CONFIG_USB_F_SUBSET=y
++CONFIG_USB_F_RNDIS=y
+ CONFIG_USB_F_MASS_STORAGE=y
+ CONFIG_USB_F_FS=y
++CONFIG_USB_F_MTP=y
++CONFIG_USB_F_PTP=y
+ CONFIG_USB_F_MIDI=y
+-# CONFIG_USB_CONFIGFS is not set
++CONFIG_USB_CONFIGFS=y
++CONFIG_USB_CONFIGFS_SERIAL=y
++CONFIG_USB_CONFIGFS_ACM=y
++CONFIG_USB_CONFIGFS_OBEX=y
++CONFIG_USB_CONFIGFS_NCM=y
++CONFIG_USB_CONFIGFS_ECM=y
++CONFIG_USB_CONFIGFS_ECM_SUBSET=y
++CONFIG_USB_CONFIGFS_RNDIS=y
++CONFIG_USB_CONFIGFS_EEM=y
++CONFIG_USB_CONFIGFS_MASS_STORAGE=y
++CONFIG_USB_CONFIGFS_F_LB_SS=y
++CONFIG_USB_CONFIGFS_F_FS=y
++CONFIG_USB_CONFIGFS_F_MTP=y
++CONFIG_USB_CONFIGFS_F_PTP=y
++CONFIG_USB_CONFIGFS_UEVENT=y
++CONFIG_USB_CONFIGFS_F_MIDI=y
+ # CONFIG_USB_ZERO is not set
+ # CONFIG_USB_AUDIO is not set
+ # CONFIG_USB_ETH is not set
+@@ -3176,8 +3202,7 @@ CONFIG_USB_F_MIDI=y
+ # CONFIG_USB_G_SERIAL is not set
+ # CONFIG_USB_MIDI_GADGET is not set
+ # CONFIG_USB_G_PRINTER is not set
+-CONFIG_USB_G_ANDROID=y
+-# CONFIG_USB_ANDROID_RNDIS_DWORD_ALIGNED is not set
++# CONFIG_USB_G_ANDROID is not set
+ # CONFIG_USB_CDC_COMPOSITE is not set
+ # CONFIG_USB_G_ACM_MS is not set
+ # CONFIG_USB_G_MULTI is not set
+-- 
+1.9.1
+

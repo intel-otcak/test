@@ -1,0 +1,95 @@
+From 0445ee5bf5c749d2b07f5d5248c03a42f32e5a98 Mon Sep 17 00:00:00 2001
+From: Janusz Dziedzic <januszx.dziedzic@intel.com>
+Date: Thu, 23 Jun 2016 10:12:43 +0200
+Subject: [PATCH 12/13] usb: dwc3: gadget: increase number of available events
+
+In worst case when 256 TRB used hardware could report
+lot of events. So, setup available events base on
+available TRBs.
+
+This prevent crash/warnings when SuperSpeed used and
+rndis interface and traffic about 500Mbps.
+In such case I saw HW report 159 events in single
+interrupt. So, seems 64 is not enought when using
+more than 64 TRBs.
+
+[ ID] Interval       Transfer     Bandwidth
+[  4]  0.0- 2.0 sec   110 MBytes   463 Mbits/sec
+[  4]  2.0- 4.0 sec   110 MBytes   461 Mbits/sec
+[  4]  4.0- 6.0 sec   115 MBytes   483 Mbits/sec
+dwc3 dwc3.0.auto: ep1out-bulk's TRB (ffff880079c5bb50) still owned by HW
+dwc3 dwc3.0.auto: ep1out-bulk's TRB (ffff880079c5bb70) still owned by HW
+dwc3 dwc3.0.auto: ep1out-bulk's TRB (ffff880079c5bb90) still owned by HW
+dwc3 dwc3.0.auto: ep1out-bulk's TRB (ffff880079c5bbb0) still owned by HW
+dwc3 dwc3.0.auto: ep1out-bulk's TRB (ffff880079c5bbd0) still owned by HW
+dwc3 dwc3.0.auto: ep1out-bulk's TRB (ffff880079c5bbf0) still owned by HW
+dwc3 dwc3.0.auto: ep1out-bulk's TRB (ffff880079c5bc10) still owned by HW
+dwc3 dwc3.0.auto: ep1out-bulk's TRB (ffff880079c5bc30) still owned by HW
+dwc3 dwc3.0.auto: ep1out-bulk's TRB (ffff880079c5bc50) still owned by HW
+dwc3 dwc3.0.auto: ep1out-bulk's TRB (ffff880079c5bc70) still owned by HW
+
+WARNING: CPU: 0 PID: 1210 at ../../../../../../kernel/cht/lib/list_debug.c:38 __list_add+0xb3/0xf0()
+Workqueue: events eth_work
+[<ffffffff81a3e109>] dump_stack+0x4e/0x7a
+[<ffffffff8108b05d>] warn_slowpath_common+0x7d/0xa0
+[<ffffffff8108b0cc>] warn_slowpath_fmt+0x4c/0x50
+[<ffffffff813a0e93>] __list_add+0xb3/0xf0
+[<ffffffff81668882>] __dwc3_gadget_ep_queue+0xf2/0x2f0
+[<ffffffff81668abe>] dwc3_gadget_ep_queue+0x3e/0xe0
+[<ffffffff8170fa66>] rx_fill+0x176/0x260
+[<ffffffff8170fdc5>] eth_work+0x35/0x40
+[<ffffffff810a8351>] process_one_work+0x171/0x4d0
+[<ffffffff810a90bc>] worker_thread+0x12c/0x3d0
+[<ffffffff810a8f90>] ? manage_workers.isra.27+0x290/0x290
+[<ffffffff810af07d>] kthread+0xed/0x110
+[<ffffffff810aef90>] ? kthread_create_on_node+0x190/0x190
+[<ffffffff81a52888>] ret_from_fork+0x58/0x90
+[<ffffffff810aef90>] ? kthread_create_on_node+0x190/0x190
+---[ end trace fe8ad512b76c13e9 ]---
+Kernel panic - not syncing: List corruption
+Workqueue: events eth_work
+ffff880079c25d08 ffff880079c25c78 ffffffff81a3e109 ffffffff81fedbeb
+ffff880079c25cf8 ffffffff81a3c30f ffff880000000008 ffff880079c25d08
+ffff880079c25ca0 ffffffff8108b0cc 0000000000000000 0000000000000024
+Call Trace:
+[<ffffffff81a3e109>] dump_stack+0x4e/0x7a
+[<ffffffff81a3c30f>] panic+0xc5/0x1db
+[<ffffffff8108b0cc>] ? warn_slowpath_fmt+0x4c/0x50
+[<ffffffff813a0ea1>] __list_add+0xc1/0xf0
+[<ffffffff81668882>] __dwc3_gadget_ep_queue+0xf2/0x2f0
+[<ffffffff81668abe>] dwc3_gadget_ep_queue+0x3e/0xe0
+[<ffffffff8170fa66>] rx_fill+0x176/0x260
+[<ffffffff8170fdc5>] eth_work+0x35/0x40
+[<ffffffff810a8351>] process_one_work+0x171/0x4d0
+[<ffffffff810a90bc>] worker_thread+0x12c/0x3d0
+[<ffffffff810a8f90>] ? manage_workers.isra.27+0x290/0x290
+[<ffffffff810af07d>] kthread+0xed/0x110
+[<ffffffff810aef90>] ? kthread_create_on_node+0x190/0x190
+[<ffffffff81a52888>] ret_from_fork+0x58/0x90
+[<ffffffff810aef90>] ? kthread_create_on_node+0x190/0x190
+Shutting down cpus with NMI
+
+Change-Id: Ice52dadf3bed05e2bec01116e1eaaa6b5ad3323b
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34491
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+Reviewed-on: https://android.intel.com:443/519136
+---
+ drivers/usb/dwc3/core.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/usb/dwc3/core.h b/drivers/usb/dwc3/core.h
+index 0265dc6..621bc19 100644
+--- a/drivers/usb/dwc3/core.h
++++ b/drivers/usb/dwc3/core.h
+@@ -43,7 +43,7 @@
+ #define DWC3_XHCI_RESOURCES_NUM	2
+ 
+ #define DWC3_EVENT_SIZE		4	/* bytes */
+-#define DWC3_EVENT_MAX_NUM	64	/* 2 events/endpoint */
++#define DWC3_EVENT_MAX_NUM	(DWC3_TRB_NUM + 4)	/* worst case when all trbs need event */
+ #define DWC3_EVENT_BUFFERS_SIZE	(DWC3_EVENT_SIZE * DWC3_EVENT_MAX_NUM)
+ #define DWC3_EVENT_TYPE_MASK	0xfe
+ 
+-- 
+1.9.1
+

@@ -1,0 +1,131 @@
+From fb083069bd6857eb0a2372a4a1ba0ee944623aef Mon Sep 17 00:00:00 2001
+From: "Kumar, Kiran S" <kiran.s.kumar@intel.com>
+Date: Thu, 4 Feb 2016 14:58:38 +0530
+Subject: [PATCH 3/6] FOR_UPSTREAM [VPG]: drm/i915: i915 KW fixes
+
+This patch fixes below critical klocwork issues in i915 found by
+KW scan.
+ 1. Check 'regd_property' for NULL in
+    intel_clrmgr_register_pipe_property() after kzalloc.
+ 2. Move the 'intel_crtc' check for NULL in chv_apply_cgm_gamma() to the
+    begining.
+ 3. Check 'connector' for NULL before using 'encoder' from connector in
+    chv_upfront_link_train().
+ 4. Check 'intel_connector' for NULL is not required in
+    intel_dp_detect() as this is not getting re-assigned in this
+    function.
+ 5. Check 'work->target_mode' for NULL after assigning the return value
+    from drm_mode_duplicate() in intel_mipi_drrs_work_fn().
+
+Change-Id: Ia11450d8a7c9d4647a20fbf394f9b8061723936b
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-18655
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-18633
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-18628
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-18626
+Signed-off-by: Kumar, Kiran S <kiran.s.kumar@intel.com>
+Reviewed-on: https://android.intel.com:443/469371
+---
+ drivers/gpu/drm/i915/intel_clrmgr.c   |   15 
+ drivers/gpu/drm/i915/intel_display.c  |   12 
+ drivers/gpu/drm/i915/intel_dp.c       |    2 
+ drivers/gpu/drm/i915/intel_dsi_drrs.c |    8 
+ 5 files changed, 25 insertions(+), 811 deletions(-)
+
+Index: b/drivers/gpu/drm/i915/intel_clrmgr.c
+===================================================================
+--- a/drivers/gpu/drm/i915/intel_clrmgr.c	2016-04-20 13:17:23.124849609 +0800
++++ b/drivers/gpu/drm/i915/intel_clrmgr.c	2016-04-20 13:50:40.548804821 +0800
+@@ -820,17 +820,15 @@
+ 	struct drm_device *dev;
+ 	struct drm_i915_private *dev_priv;
+ 
+-	if (intel_crtc == NULL)
+-		return false;
+-
+-	dev = intel_crtc->base.dev;
+-	dev_priv = dev->dev_private;
+-
+ 	/* Validate input */
+ 	if (!intel_crtc) {
+ 		DRM_ERROR("Invalid CRTC object input to CGM gamma enable\n");
+ 		return false;
+ 	}
++
++	dev = intel_crtc->base.dev;
++	dev_priv = dev->dev_private;
++
+ 	cgm_ctrl_reg = dev_priv->info.display_mmio_offset +
+ 			cgm_ctrl[intel_crtc->pipe];
+ 	if (enable) {
+@@ -1466,6 +1464,11 @@
+ 		/* Add the property in global pipe status */
+ 		regd_property = kzalloc(sizeof(struct clrmgr_regd_prop),
+ 								GFP_KERNEL);
++		if (!regd_property) {
++			DRM_ERROR("Failed to allocate property %s\n",
++							property->name);
++			goto error;
++		}
+ 		regd_property->property = property;
+ 		regd_property->enabled = false;
+ 		regd_property->set_property = cp->set_property;
+Index: b/drivers/gpu/drm/i915/intel_display.c
+===================================================================
+--- a/drivers/gpu/drm/i915/intel_display.c	2016-04-20 13:17:23.124849609 +0800
++++ b/drivers/gpu/drm/i915/intel_display.c	2016-04-20 13:17:23.120849619 +0800
+@@ -15196,14 +15196,20 @@
+ {
+ 	struct drm_i915_private *dev_priv = dev->dev_private;
+ 	struct intel_connector *connector = intel_dp->attached_connector;
+-	struct intel_encoder *encoder = connector->encoder;
++	struct intel_encoder *encoder;
+ 	enum intel_display_power_domain power_domain;
+ 	bool found = false;
+ 	bool valid_crtc = false;
+ 	uint8_t tmp_lane_count, tmp_link_bw;
+ 
+-	if (!connector || !encoder) {
+-		DRM_DEBUG_KMS("dp connector/encoder is NULL\n");
++	if (!connector) {
++		DRM_DEBUG_KMS("dp connector is NULL\n");
++		return false;
++	}
++
++	encoder = connector->encoder;
++	if (!encoder) {
++		DRM_DEBUG_KMS("dp encoder is NULL\n");
+ 		return false;
+ 	}
+ 
+Index: b/drivers/gpu/drm/i915/intel_dp.c
+===================================================================
+--- a/drivers/gpu/drm/i915/intel_dp.c	2016-04-20 13:17:23.124849609 +0800
++++ b/drivers/gpu/drm/i915/intel_dp.c	2016-04-20 13:17:23.120849619 +0800
+@@ -4931,7 +4931,7 @@
+ 
+ 	intel_runtime_pm_put(dev_priv);
+ 
+-	if (intel_connector && status == connector_status_disconnected) {
++	if (status == connector_status_disconnected) {
+ 		kfree(intel_connector->edid);
+ 		intel_connector->edid = NULL;
+ 	}
+Index: b/drivers/gpu/drm/i915/intel_dsi_drrs.c
+===================================================================
+--- a/drivers/gpu/drm/i915/intel_dsi_drrs.c	2016-04-20 13:17:23.124849609 +0800
++++ b/drivers/gpu/drm/i915/intel_dsi_drrs.c	2016-04-20 13:17:23.120849619 +0800
+@@ -103,8 +103,12 @@
+ 
+ 		work->target_mode = drm_mode_duplicate(intel_encoder->base.dev,
+ 								prev_mode);
+-		fallback_attempt = true;
+-		goto init;
++		if (!work->target_mode)
++			DRM_ERROR("Mode duplication failed\n");
++		else {
++			fallback_attempt = true;
++			goto init;
++		}
+ 	} else {
+ 
+ 		/*

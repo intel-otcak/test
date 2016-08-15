@@ -1,0 +1,470 @@
+From 3212a1da08cf088fc6f5ed5f62003972aa1d081e Mon Sep 17 00:00:00 2001
+From: Daniel Drubin <idaniel.drubin@intel.com>
+Date: Tue, 15 Mar 2016 19:56:24 +0200
+Subject: [PATCH 3/4] ISH drivers - disable rmmod
+
+Fixing rmmod inconsistencies for ISH drivers - disable rmmod.
+Since ISH is not a removable device there's no real case to remove its
+drivers since they loaded and device operation started
+
+Change-Id: Ia5054f051d353fec0982c0a8a2468b90f808771e
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-23619
+Signed-off-by: Daniel Drubin <daniel.drubin@intel.com>
+Reviewed-on: https://android.intel.com:443/479686
+---
+ drivers/misc/intel-ish/hbm.c                 |  7 +++--
+ drivers/misc/intel-ish/hw-ish-regs.h         |  2 +-
+ drivers/misc/intel-ish/ish-hid-dd.c          | 32 +++++++++++--------
+ drivers/misc/intel-ish/ishtp-api.c           | 11 +++++--
+ drivers/misc/intel-ish/ishtp-hid-client.c    | 12 +++++---
+ drivers/misc/intel-ish/ishtp-hid.c           |  6 ----
+ drivers/misc/intel-ish/ishtp-hid.h           |  6 ----
+ drivers/misc/intel-ish/pci-ish.c             | 46 ++++++++++++++++++----------
+ drivers/misc/intel-ish/platform-config.h     |  2 +-
+ drivers/misc/intel-ish/senscol-core-common.c | 15 ---------
+ drivers/misc/intel-ish/senscol-core-legacy.c |  1 -
+ drivers/misc/intel-ish/senscol-core.c        |  8 +++--
+ 12 files changed, 75 insertions(+), 73 deletions(-)
+
+diff --git a/drivers/misc/intel-ish/hbm.c b/drivers/misc/intel-ish/hbm.c
+index 74975e4..dd54f47 100644
+--- a/drivers/misc/intel-ish/hbm.c
++++ b/drivers/misc/intel-ish/hbm.c
+@@ -60,8 +60,8 @@ static void ishtp_hbm_fw_cl_allocate(struct ishtp_device *dev)
+  * @buf: buffer for cl header
+  * @len: buffer length
+  */
+-static inline void ishtp_hbm_cl_hdr(struct ishtp_cl *cl, uint8_t hbm_cmd, void *buf,
+-	size_t len)
++static inline void ishtp_hbm_cl_hdr(struct ishtp_cl *cl, uint8_t hbm_cmd,
++	void *buf, size_t len)
+ {
+ 	struct ishtp_hbm_cl_cmd *cmd = buf;
+ 
+@@ -452,7 +452,8 @@ void *get_dma_send_buf(struct ishtp_device *dev, uint32_t size)
+  * release_dma_acked_mem - returnes the acked memory to free list.
+  * (from msg_addr, size bytes long)
+  */
+-void release_dma_acked_mem(struct ishtp_device *dev, void *msg_addr, uint32_t size)
++void release_dma_acked_mem(struct ishtp_device *dev, void *msg_addr,
++	uint8_t size)
+ {
+ 	unsigned long	flags;
+ 	int acked_slots = (size / DMA_SLOT_SIZE)
+diff --git a/drivers/misc/intel-ish/hw-ish-regs.h b/drivers/misc/intel-ish/hw-ish-regs.h
+index e1dc5f1..6c0aa5f 100644
+--- a/drivers/misc/intel-ish/hw-ish-regs.h
++++ b/drivers/misc/intel-ish/hw-ish-regs.h
+@@ -169,7 +169,7 @@ ISH FW may not write to them */
+ 			((uint32_t)IPC_ISH_ISHTP_READY_BIT))
+ 
+ #define IPC_IS_ISH_ILUP(ish_status)		\
+-			(((ish_status) & IPC_ILUP_BIT) == ((uint32_t)IPC_ILUP_BIT))
++		(((ish_status) & IPC_ILUP_BIT) == ((uint32_t)IPC_ILUP_BIT))
+ 
+ 
+ #define IPC_PROTOCOL_ISHTP		1
+diff --git a/drivers/misc/intel-ish/ish-hid-dd.c b/drivers/misc/intel-ish/ish-hid-dd.c
+index 99beaab..7ea80fe 100644
+--- a/drivers/misc/intel-ish/ish-hid-dd.c
++++ b/drivers/misc/intel-ish/ish-hid-dd.c
+@@ -131,8 +131,8 @@ static int ish_reset_resume(struct hid_device *hdev)
+ #endif /* CONFIG_PM */
+ 
+ #if SENSCOL_1
+-static int ish_set_feature(struct hid_sens_hub_device *hsdev, uint32_t report_id,
+-				uint32_t field_index, int32_t value)
++static int ish_set_feature(struct hid_sens_hub_device *hsdev,
++		uint32_t report_id, uint32_t field_index, int32_t value)
+ {
+ 	struct hid_report *report;
+ 	struct ish_data *data = hid_get_drvdata(hsdev->hdev);
+@@ -165,8 +165,8 @@ done_proc:
+  * - upon success, count is in int32_t values (not in bytes)
+  */
+ static int ish_get_feature_ex(struct hid_sens_hub_device *hsdev,
+-	uint32_t report_id, uint32_t field_index, uint32_t *usage_id, int32_t **pvalue,
+-	size_t *count, unsigned *is_string)
++	uint32_t report_id, uint32_t field_index, uint32_t *usage_id,
++	int32_t **pvalue, size_t *count, unsigned *is_string)
+ {
+ 	struct hid_report *report;
+ 	struct ish_data *data = hid_get_drvdata(hsdev->hdev);
+@@ -378,7 +378,6 @@ static int hid_set_sens_properties(struct list_head *set_prop_list,
+ 	int32_t val;
+ 	int	field, rv = 0;
+ 	struct hid_report *report;
+-	struct ish_data *data;
+ 	struct sens_property *prop, *next;
+ 
+ 	/* sensor hub device */
+@@ -389,8 +388,7 @@ static int hid_set_sens_properties(struct list_head *set_prop_list,
+ 	/* Report ID */
+ 	report_id = sensor_id & 0xFFFF;
+ 
+-	data = hid_get_drvdata(sd->hsdev->hdev);
+-	mutex_lock(&data->mutex);
++	mutex_lock(&sd->mutex);
+ 	report = ish_report(report_id, sd->hsdev->hdev, HID_FEATURE_REPORT);
+ 	if (!report) {
+ 		rv = -EINVAL;
+@@ -422,7 +420,7 @@ static int hid_set_sens_properties(struct list_head *set_prop_list,
+ 
+ 	rv = 0;
+ done_proc:
+-	mutex_unlock(&data->mutex);
++	mutex_unlock(&sd->mutex);
+ 
+ 	return rv;
+ }
+@@ -840,7 +838,6 @@ static int ish_probe(struct hid_device *hdev, const struct hid_device_id *id)
+ 	struct hid_field	*inp_field, *feat_field;
+ 	struct sensor_def	*senscol_sensor;
+ 	int	dev_cnt, ret = 0;
+-
+ 	sd = devm_kzalloc(&hdev->dev, sizeof(*sd), GFP_KERNEL);
+ 	if (!sd) {
+ 		hid_err(hdev, "cannot allocate sensor data structure\n");
+@@ -931,9 +928,10 @@ static int ish_probe(struct hid_device *hdev, const struct hid_device_id *id)
+ err_stop_hw:
+ 	hid_hw_stop(hdev);
+ err_free:
+-	kfree(sd->hsdev);
++	devm_kfree(&hdev->dev, sd->hsdev);
+ err_free_hub:
+-	kfree(sd);
++	devm_kfree(&hdev->dev, sd);
++	ish_cur_count--;
+ 
+ 	return ret;
+ }
+@@ -977,6 +975,8 @@ static void ish_remove(struct hid_device *hdev)
+ #else
+ 		senscol_reset_notify();
+ #endif
++	devm_kfree(&hdev->dev, data->hsdev);
++	devm_kfree(&hdev->dev, data);
+ }
+ 
+ static const struct hid_device_id ish_devices[] = {
+@@ -1029,9 +1029,17 @@ static void __exit ish_driver_exit(void)
+ 	hid_unregister_driver(&ish_driver);
+ #if SENSCOL_1
+ 	senscol_exit_legacy();
++#else
++	senscol_exit();
+ #endif
+ }
+-module_exit(ish_driver_exit);
++/*
++ * Currently, we block the removal of the module
++ * (it will be a permanent module).
++ * The ish device is not a removable device, so its drivers
++ * should be allways up.
++ */
++/* module_exit(ish_driver_exit); */
+ 
+ MODULE_DESCRIPTION("ISH HID driver");
+ MODULE_LICENSE("GPL");
+diff --git a/drivers/misc/intel-ish/ishtp-api.c b/drivers/misc/intel-ish/ishtp-api.c
+index eacca37..c0bff25 100644
+--- a/drivers/misc/intel-ish/ishtp-api.c
++++ b/drivers/misc/intel-ish/ishtp-api.c
+@@ -469,14 +469,19 @@ static int __init ishtp_init(void)
+ {
+ 	return ishtp_cl_bus_init();
+ }
++module_init(ishtp_init);
+ 
+ static void __exit ishtp_exit(void)
+ {
+ 	ishtp_cl_bus_exit();
+ }
+-
+-module_init(ishtp_init);
+-module_exit(ishtp_exit);
++/*
++ * Currently, we block the removal of the module
++ * (it will be a permanent module).
++ * The ish device is not a removable device, so its drivers
++ * should be allways up.
++ */
++/* module_exit(ishtp_exit); */
+ 
+ MODULE_AUTHOR("Intel Corporation");
+ MODULE_DESCRIPTION("Intel(R)ISHTP user-mode API ");
+diff --git a/drivers/misc/intel-ish/ishtp-hid-client.c b/drivers/misc/intel-ish/ishtp-hid-client.c
+index 9954300..a852b48 100644
+--- a/drivers/misc/intel-ish/ishtp-hid-client.c
++++ b/drivers/misc/intel-ish/ishtp-hid-client.c
+@@ -58,8 +58,6 @@ struct work_struct hid_init_work;
+ static unsigned	bad_recv_cnt;
+ static int	multi_packet_cnt;
+ 
+-void (*flush_cb)(void); /* flush notification */
+-
+ static void	report_bad_packet(void *recv_buf, size_t cur_pos,
+ 	size_t payload_len)
+ {
+@@ -221,8 +219,6 @@ static void	process_recv(void *recv_buf, size_t data_len)
+ 
+ 		case HOSTIF_GET_FEATURE_REPORT:
+ 			report_type = HID_FEATURE_REPORT;
+-			flush_cb(); /* each "GET_FEATURE_REPORT" may indicate
+-					a flush complete event */
+ 			goto	do_get_report;
+ 
+ 		case HOSTIF_GET_INPUT_REPORT:
+@@ -604,7 +600,13 @@ static void __exit ish_exit(void)
+ {
+ 	ishtp_cl_driver_unregister(&hid_ishtp_cl_driver);
+ }
+-module_exit(ish_exit);
++/*
++ * Currently, we block the removal of the module
++ * (it will be a permanent module).
++ * The ish device is not a removable device, so its drivers
++ * should be allways up.
++ */
++/* module_exit(ish_exit); */
+ 
+ MODULE_DESCRIPTION("ISH ISHTP client driver");
+ MODULE_AUTHOR("Intel Corporation");
+diff --git a/drivers/misc/intel-ish/ishtp-hid.c b/drivers/misc/intel-ish/ishtp-hid.c
+index c9e5314..fc1c39f 100644
+--- a/drivers/misc/intel-ish/ishtp-hid.c
++++ b/drivers/misc/intel-ish/ishtp-hid.c
+@@ -175,9 +175,3 @@ void	ishtp_hid_remove(void)
+ 		}
+ }
+ 
+-void register_flush_cb(void (*flush_cb_func)(void))
+-{
+-	flush_cb = flush_cb_func;
+-}
+-EXPORT_SYMBOL(register_flush_cb);
+-
+diff --git a/drivers/misc/intel-ish/ishtp-hid.h b/drivers/misc/intel-ish/ishtp-hid.h
+index eb08534..265d63f 100644
+--- a/drivers/misc/intel-ish/ishtp-hid.h
++++ b/drivers/misc/intel-ish/ishtp-hid.h
+@@ -41,9 +41,6 @@ static const uuid_le hid_ishtp_guid = UUID_LE(0x33AECD58, 0xB679, 0x4E54,
+ 
+ extern wait_queue_head_t	ishtp_hid_wait;
+ 
+-/* flush notification */
+-extern void (*flush_cb)(void);
+-
+ struct hostif_msg_hdr {
+ 	uint8_t	command;	/* Bit 7: is_response */
+ 	uint8_t	device_id;
+@@ -120,9 +117,6 @@ void hid_ishtp_get_report(struct hid_device *hid, int report_id,
+ int	ishtp_hid_probe(unsigned cur_hid_dev);
+ void	ishtp_hid_remove(void);
+ 
+-/* flush notification */
+-void register_flush_cb(void (*flush_cb_func)(void));
+-
+ /*********** Locally redirect ish_print_log **************/
+ void g_ish_print_log(char *format, ...);
+ /*********************************************************/
+diff --git a/drivers/misc/intel-ish/pci-ish.c b/drivers/misc/intel-ish/pci-ish.c
+index 9f18b50..6538473 100644
+--- a/drivers/misc/intel-ish/pci-ish.c
++++ b/drivers/misc/intel-ish/pci-ish.c
+@@ -541,7 +541,7 @@ static struct device_attribute transfer_path = {
+ static void workqueue_init_function(struct work_struct *work)
+ {
+ 	struct ishtp_device *dev = ((struct init_work_t *)work)->dev;
+-	int err;
++	int err = 0;
+ 
+ 	dev_set_drvdata(dev->devc, dev);
+ 
+@@ -583,25 +583,17 @@ static void workqueue_init_function(struct work_struct *work)
+ 	if (ish_hw_start(dev)) {
+ 		dev_err(dev->devc, "ISH: Init hw failed.\n");
+ 		err = -ENODEV;
+-		goto out_err;
++		goto out;
+ 	}
+ 
+ 	if (ishtp_start(dev)) {
+ 		dev_err(dev->devc, "ISHTP: Protocol init failed.\n");
+ 		err = -ENOENT;
+-		goto out_err;
++		goto out;
+ 	}
+ 
+ 	err = ishtp_register(dev);
+-	if (err)
+-		goto out_err;
+-
+-	mutex_unlock(&ishtp_mutex);
+-
+-	kfree((void *)work);
+-	return;
+-
+-out_err:
++out:
+ 	mutex_unlock(&ishtp_mutex);
+ 	kfree((void *)work);
+ }
+@@ -634,7 +626,6 @@ static int ish_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
+ 		(pdev->revision & REVISION_ID_SI_MASK) ==
+ 			REVISION_ID_CHT_Dx_SI ? "CHT Dx" : "Unknown",
+ 		pdev->revision);
+-
+ 	mutex_lock(&ishtp_mutex);
+ 	if (ishtp_pci_device) {
+ 		err = -EEXIST;
+@@ -742,7 +733,6 @@ static void ish_remove(struct pci_dev *pdev)
+ {
+ 	struct ishtp_device *dev;
+ 	struct ish_hw *hw;
+-
+ 	/*
+ 	 * This happens during power-off/reboot and may be at the same time as
+ 	 * a lot of bi-directional communication happens
+@@ -758,14 +748,14 @@ static void ish_remove(struct pci_dev *pdev)
+ 		return;
+ 	}
+ 
+-	hw = to_ish_hw(dev);
+-
++	ishtp_bus_remove_all_clients(dev);      /* Remove all client devices */
+ 	/*
+ 	 * Set ISHTP device state to disabled.
+ 	 * Invalidate all other possible communication in both directions
+ 	 */
+ 	ishtp_device_disable(dev);
+ 
++	hw = to_ish_hw(dev);
+ 	free_irq(pdev->irq, dev);
+ 	pci_disable_msi(pdev);
+ 	pci_iounmap(pdev, hw->mem_addr);
+@@ -777,8 +767,12 @@ static void ish_remove(struct pci_dev *pdev)
+ 	}
+ 	pci_set_drvdata(pdev, NULL);
+ 	ishtp_deregister(dev);
++#if ISH_DEBUGGER
++	misc_deregister(&ishdbg_misc_device);
++#endif
+ 	kfree(dev);
+ 	pci_release_regions(pdev);
++	pci_clear_master(pdev);
+ 	pci_disable_device(pdev);
+ }
+ 
+@@ -835,7 +829,25 @@ static struct pci_driver ish_driver = {
+ 	.driver.pm = ISHTP_ISH_PM_OPS,
+ };
+ 
+-module_pci_driver(ish_driver);
++static int __init ish_driver_init(void)
++{
++	return pci_register_driver(&ish_driver);
++}
++module_init(ish_driver_init);
++
++static void __exit ish_driver_exit(void)
++{
++	 pci_unregister_driver(&ish_driver);
++}
++/*
++ * Currently, we block the removal of the module
++ * (it will be a permanent module).
++ * The ish device is not a removable device, so its drivers
++ * should be allways up.
++ */
++/* module_exit(ish_driver_exit); */
++
++/* module_pci_driver(ish_driver); */
+ 
+ MODULE_AUTHOR("Intel Corporation");
+ MODULE_DESCRIPTION("Intel(R) Integrated Sensor Hub PCI Device Driver");
+diff --git a/drivers/misc/intel-ish/platform-config.h b/drivers/misc/intel-ish/platform-config.h
+index dc446bd..f19ce7e 100644
+--- a/drivers/misc/intel-ish/platform-config.h
++++ b/drivers/misc/intel-ish/platform-config.h
+@@ -17,7 +17,7 @@
+ #define PLATFORM_CONFIG__H
+ 
+ /* Build ID string */
+-#define BUILD_ID	"260-stdint"
++#define BUILD_ID	"clean-up"
+ 
+ #define	ISH_INFO	1
+ #if ISH_INFO
+diff --git a/drivers/misc/intel-ish/senscol-core-common.c b/drivers/misc/intel-ish/senscol-core-common.c
+index 37273a7..8e3478f 100644
+--- a/drivers/misc/intel-ish/senscol-core-common.c
++++ b/drivers/misc/intel-ish/senscol-core-common.c
+@@ -1,18 +1,3 @@
+-/*
+- * Sensor collection interface
+- *
+- * Copyright (c) 2014-2016, Intel Corporation.
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms and conditions of the GNU General Public License,
+- * version 2, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope it will be useful, but WITHOUT
+- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+- * more details.
+- */
+-
+ #include <linux/spinlock.h>
+ #include <linux/slab.h>
+ #include <linux/senscol/senscol-core.h>
+diff --git a/drivers/misc/intel-ish/senscol-core-legacy.c b/drivers/misc/intel-ish/senscol-core-legacy.c
+index 6baa6c5..10ff0b7 100644
+--- a/drivers/misc/intel-ish/senscol-core-legacy.c
++++ b/drivers/misc/intel-ish/senscol-core-legacy.c
+@@ -12,7 +12,6 @@
+  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+  * more details.
+  */
+-
+ #include <linux/senscol/senscol-core.h>
+ 
+ #if SENSCOL_1
+diff --git a/drivers/misc/intel-ish/senscol-core.c b/drivers/misc/intel-ish/senscol-core.c
+index c2f0099..8c9a9e5 100644
+--- a/drivers/misc/intel-ish/senscol-core.c
++++ b/drivers/misc/intel-ish/senscol-core.c
+@@ -12,7 +12,6 @@
+  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+  * more details.
+  */
+-
+ #include <linux/senscol/senscol-core.h>
+ 
+ #if !SENSCOL_1
+@@ -25,7 +24,6 @@
+ #include <linux/miscdevice.h>
+ #include <linux/poll.h>
+ #include <linux/compat.h>
+-#include "ishtp-hid.h"
+ 
+ int sensor_num = 0;
+ 
+@@ -1096,8 +1094,12 @@ int senscol_init(void)
+ 	rv = misc_register(&senscol_misc_device);
+ 	if (rv)
+ 		return	rv;
+-
+ 	return 0;
+ }
+ 
++void senscol_exit(void)
++{
++	misc_deregister(&senscol_misc_device);
++}
++
+ #endif /* !SENSCOL_1 */
+-- 
+1.9.1
+

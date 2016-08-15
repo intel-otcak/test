@@ -1,0 +1,39 @@
+From 124c209c3b4729908b9cd427ba90601095eaca03 Mon Sep 17 00:00:00 2001
+From: John Youn <johnyoun@synopsys.com>
+Date: Mon, 23 May 2016 11:32:43 -0700
+Subject: [PATCH 24/41] usb: dwc3: gadget: Fix usage of bitwise operator
+
+Cleans up the sparse warning:
+warning: dubious: x | !y
+
+Since we do want a bitwise OR here, don't use a logical (true/false)
+value. Probably is not a real issue but it cleans up the warning.
+
+Signed-off-by: John Youn <johnyoun@synopsys.com>
+Signed-off-by: Felipe Balbi <felipe.balbi@linux.intel.com>
+(cherry picked from commit d07fa665c79d85fead080f4b611c3f7645576454)
+Signed-off-by: Janusz Dziedzic <januszx.dziedzic@intel.com>
+
+Change-Id: I8cfbd18ab2e9d948b4391d8cc62cecd5ca1aca90
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-34814
+Reviewed-on: https://android.intel.com:443/519794
+---
+ drivers/usb/dwc3/gadget.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/usb/dwc3/gadget.c b/drivers/usb/dwc3/gadget.c
+index 0f6b6c7..ece8f48 100644
+--- a/drivers/usb/dwc3/gadget.c
++++ b/drivers/usb/dwc3/gadget.c
+@@ -2013,7 +2013,7 @@ static int dwc3_gadget_init_hw_endpoints(struct dwc3 *dwc,
+ 	u8				i;
+ 
+ 	for (i = 0; i < num; i++) {
+-		u8 epnum = (i << 1) | (!!direction);
++		u8 epnum = (i << 1) | (direction ? 1 : 0);
+ 
+ 		dep = kzalloc(sizeof(*dep), GFP_KERNEL);
+ 		if (!dep) {
+-- 
+1.9.1
+
