@@ -5523,5 +5523,3 @@ Make-dm-verity-target.c-consistent-with-kernel-commo.patch
 ANDROID-dm-verity-fec-fix-RS-block-calculation.patch
 ANDROID-dm-verity-fec-initialize-recursion-level.patch
 usb-gadget-FunctionFS-dereference-ffs_dev-conditiona.patch
-mm-x86_64-ensure-get_unmapped_area-returns-higher-ad.patch
-Increasing-the-mmap-randomization-bits-in-compat-mod.patch
