@@ -1,3 +1,11 @@
+cht-m: Weekly release 2016_WW31 
+=============================== 
+
+Obsoleted patch
+---------------
+mm-x86_64-ensure-get_unmapped_area-returns-higher-ad.patch
+Increasing-the-mmap-randomization-bits-in-compat-mod.patch
+
 cht-m: Weekly release 2016_WW30
 ===============================
 

@@ -3,11 +3,10 @@
 "VPG Patches",1228,323,905
 "Documentation",13,12,1
 "acpi",41,0,41
-"arch/arm",124,124,0
-"arch/arm/boot",4,3,1
+"arch/arm",128,127,1
 "arch/arm/boot/compressed",1,1,0
-"arch/x86",36,2,34
-"arch/x86/configs",34,0,34
+"arch/x86",35,2,33
+"arch/x86/configs",33,0,33
 "arch/x86/kernel/acpi",1,0,1
 "arch/x86/kernel/cpu",3,1,2
 "arch/x86/pci",1,0,1
